@@ -420,6 +420,54 @@
       .ea-chart { min-height:200px; }
     }
 
+    /* ===== EA request flow / profile extras ===== */
+    .profile-extra { max-width:760px; margin:20px auto 0; }
+    .st-pend { background:rgba(212,165,64,.14); color:var(--gold2); border-color:var(--line2); }
+    .ea-req { margin:14px 0 4px; padding:14px 16px; border-radius:16px; background:rgba(0,0,0,.28); border:1px solid var(--line); }
+    .ea-req-bar { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+    .ea-price { font:600 16px "Kanit",sans-serif; color:#f6dc8a; }
+    .ea-req-bar .btn { padding:11px 22px; font-size:15px; }
+    .ea-req-body { margin-top:14px; padding-top:14px; border-top:1px solid var(--line); }
+    .ea-req-body > .ghost { margin-top:8px; }
+    .ea-req-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .ea-req-grid .field { margin-top:0; }
+    .ea-req-hd { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-bottom:4px; }
+    .ea-req-hd strong, .ea-req-hd a { font:600 15px "Kanit",sans-serif; color:#fff3d0; }
+    .ea-req-sec { margin-top:16px; padding-top:14px; border-top:1px dashed var(--line); }
+    .ea-lic { margin:10px 0 4px; }
+    .ea-lic-hd { display:flex; align-items:center; gap:10px; margin-bottom:6px; color:#e6d3a3; }
+    .ea-lic-key { font-family:ui-monospace,Consolas,monospace; font-size:12px !important; }
+    .ea-lic-exp { display:block; margin-top:6px; font-size:12px; }
+    .ea-bill { display:flex; gap:14px; align-items:center; margin:8px 0 12px; }
+    .ea-bill svg { flex:none; border-radius:8px; }
+    .ea-bill-no { font:700 20px "Kanit",sans-serif; letter-spacing:.08em; color:#fff3d0; }
+    .ea-deliv { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:8px 0 10px; }
+    .ea-deliv-opt { display:flex; gap:10px; align-items:flex-start; cursor:pointer; padding:12px 14px; border-radius:14px; border:1px solid var(--line); background:rgba(0,0,0,.25); color:#d9c79a; transition:all .18s; }
+    .ea-deliv-opt:hover { border-color:var(--line2); }
+    .ea-deliv-opt.on { border-color:var(--gold2); background:rgba(212,165,64,.12); color:#fff3d0; box-shadow:0 0 14px rgba(212,165,64,.15); }
+    .ea-deliv-opt input { margin-top:3px; flex:none; }
+    .ea-deliv-opt b { display:block; font-weight:500; }
+    .ai-opt-sub { display:block; font-size:12.5px; margin-top:2px; }
+    .ea-dl { display:flex; gap:8px; flex-wrap:wrap; }
+    .ea-my { padding:14px 0; border-bottom:1px solid rgba(212,165,64,.14); }
+    .ea-my:last-child { border-bottom:0; }
+    .ea-my-meta { display:flex; flex-wrap:wrap; gap:6px 18px; color:var(--dim); font-size:13px; margin:4px 0; }
+    .ea-card-price { font-size:12.5px; color:#e6d3a3; }
+    .ai-body { margin-top:6px; }
+    .ai-meter { margin:6px 0 10px; }
+    .ai-bar { position:relative; height:14px; border-radius:999px; background:rgba(0,0,0,.45); border:1px solid var(--line); overflow:visible; }
+    .ai-fill { height:100%; border-radius:999px; background:var(--btn); box-shadow:0 0 12px rgba(212,165,64,.35); transition:width .4s; }
+    .ai-fill.soft { background:linear-gradient(90deg,#e6b850,#ff9f43); }
+    .ai-fill.hard { background:linear-gradient(90deg,#ff7a7f,#d9434b); }
+    .ai-mark { position:absolute; top:-4px; bottom:-4px; width:2px; background:#fff3d0; box-shadow:0 0 6px #ffd770; }
+    .ai-nums { display:flex; justify-content:space-between; flex-wrap:wrap; gap:6px; margin-top:8px; font-size:13.5px; color:#e6d3a3; }
+    .ai-small { font-size:12.5px; margin:4px 0; }
+    .ai-block { font-weight:600; }
+    @media (max-width:600px) {
+      .ea-req-grid, .ea-deliv { grid-template-columns:1fr; }
+      .ea-req-bar .btn { width:100%; }
+    }
+
     /* scrollbars */
     * { scrollbar-width:thin; scrollbar-color:rgba(212,165,64,.4) transparent; }
     ::-webkit-scrollbar { width:8px; height:8px; } ::-webkit-scrollbar-thumb { background:rgba(212,165,64,.35); border-radius:8px; } ::-webkit-scrollbar-track { background:transparent; }
@@ -515,6 +563,8 @@
         <p id="profileMsg" class="muted"></p>
         <p id="kycState" class="warn">ยังไม่ครบ — ขาดเอกสารยืนยันตัวตน และขาดหน้าสมุดบัญชี</p>
       </div>
+      <div class="card profile-extra" id="myEaCard"><h2>EA ของฉัน</h2><p class="muted">กำลังโหลด…</p></div>
+      <div class="card profile-extra" id="aiUsageCard"><h2>การใช้ AI / API token</h2></div>
     </section>
 
     <section class="page" id="home">
@@ -855,6 +905,7 @@ SETUP: FVG + OB sweep"></textarea>
 <script src="./ai-chat.js"></script>
 <script src="./control-layer.js"></script>
 <script src="./ea-marketplace.js"></script>
+<script src="./ai-usage.js"></script>
 <script>
 /* Nav + Google primary handled by site-menu.js / auth-ui.js */
 function go(name) {

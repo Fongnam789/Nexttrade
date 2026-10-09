@@ -3,6 +3,9 @@
  * Customer API key MUST arrive in X-Customer-Api-Key (or body.api_key).
  * Never reads company env keys for LLM. No secrets in repo.
  */
+const G = require("./_lib/google");
+const U = require("./_lib/ai-usage");
+
 const SYSTEM = [
   "You are Nexttrade AI assistant for a Thai FX/gold trader dashboard.",
   "Answer in the user's language (Thai if they write Thai).",
@@ -13,7 +16,7 @@ const SYSTEM = [
 function cors(res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST,OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Customer-Api-Key");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Customer-Api-Key, Authorization");
 }
 
 function readBody(req) {
@@ -188,7 +191,26 @@ module.exports = async function handler(req, res) {
   if (provider === "grok") provider = "xai";
 
   let effectiveKey = key;
-  if (!effectiveKey && allowServer) {
+  let usage = null;
+  const wantsOurs = !key && (String(body.mode || "") === "ours" || allowServer);
+  if (wantsOurs) {
+    // "ใช้ระบบของเรา": our server key, only for a verified Google account, metered by soft/hard caps (api/_lib/ai-caps.js).
+    // BYOK requests (customer key present) are never metered and never touch server keys.
+    const sendJson = (status, obj) => {
+      res.statusCode = status;
+      res.setHeader("Content-Type", "application/json; charset=utf-8");
+      res.end(JSON.stringify(obj));
+    };
+    const user = await G.userFromReq(req);
+    if (!user) {
+      return sendJson(401, { ok: false, error: "google_login_required", gated: true, reply: "โหมดใช้ระบบของเราต้องเข้าสู่ระบบ Google ก่อน" });
+    }
+    if (!String(body.message || body.text || "").trim()) {
+      return sendJson(400, { ok: false, error: "empty_message", reply: "" });
+    }
+    if (!allowServer) {
+      return sendJson(503, { ok: false, error: "our_key_not_configured", gated: true, reply: "ระบบของเรายังไม่เปิดใช้คีย์กลาง (แอดมินยังไม่ตั้งค่า) — ใช้ API token ของคุณเองไปก่อน" });
+    }
     const envMap = {
       openai: process.env.OPENAI_API_KEY,
       anthropic: process.env.ANTHROPIC_API_KEY,
@@ -196,6 +218,19 @@ module.exports = async function handler(req, res) {
       xai: process.env.XAI_API_KEY,
     };
     effectiveKey = (envMap[provider] || "").trim();
+    if (!effectiveKey) {
+      return sendJson(503, { ok: false, error: "our_key_not_configured", gated: true, reply: "ระบบของเรายังไม่มีคีย์สำหรับผู้ให้บริการนี้" });
+    }
+    let r;
+    try {
+      r = await U.consume(user.sub);
+    } catch (e) {
+      return sendJson(503, { ok: false, error: "usage_store_error", gated: true, reply: "ตรวจโควตาไม่ได้ชั่วคราว ลองใหม่ภายหลัง" });
+    }
+    usage = r.usage;
+    if (!r.allowed) {
+      return sendJson(429, { ok: false, error: "hard_cap", gated: true, usage, reply: "ใช้ครบ Hard Cap แล้ว — ระงับการใช้จนกว่าจะรีเซ็ตรอบใหม่หรือเติมโควตา" });
+    }
   }
 
   if (!effectiveKey) {
@@ -207,7 +242,7 @@ module.exports = async function handler(req, res) {
         error: "no_customer_key",
         gated: true,
         reply:
-          "ต้องมีคีย์ลูกค้าในหัวข้อ X-Customer-Api-Key (หรือรัน Local Agent) — โหมดคีย์บริษัทปิดอยู่ (CHAT_ALLOW_SERVER_KEYS≠1)",
+          "ต้องมีคีย์ลูกค้าในหัวข้อ X-Customer-Api-Key (หรือรัน Local Agent) หรือเลือกโหมดใช้ระบบของเราในโปรไฟล์",
       })
     );
     return;
@@ -246,7 +281,7 @@ module.exports = async function handler(req, res) {
     }
     res.statusCode = 200;
     res.setHeader("Content-Type", "application/json; charset=utf-8");
-    res.end(JSON.stringify({ ok: true, provider, reply, gated: false, source: key ? "byok" : "server_env" }));
+    res.end(JSON.stringify({ ok: true, provider, reply, gated: false, source: key ? "byok" : "server_env", usage, soft_warning: !!(usage && usage.state !== "ok") }));
   } catch (e) {
     res.statusCode = e.status && e.status >= 400 ? e.status : 502;
     res.setHeader("Content-Type", "application/json; charset=utf-8");

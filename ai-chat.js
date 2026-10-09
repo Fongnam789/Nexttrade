@@ -159,6 +159,32 @@
     });
   }
 
+  function chatViaOurs(message, provider, history) {
+    var auth = root.NexxGoogleAuth;
+    var tok = auth && auth.getCredential ? auth.getCredential() : "";
+    if (!tok) {
+      return Promise.resolve({ reply: "โหมดใช้ระบบของเรา: กรุณาเข้าสู่ระบบ Google (อีกครั้ง) ก่อนแชต", source: "gated", provider: provider, error: "login_required", gated: true });
+    }
+    return fetch(proxyUrl(), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok },
+      body: JSON.stringify({ message: message, provider: provider, history: history || [], mode: "ours" }),
+    }).then(function (r) {
+      return r.json().catch(function () { return { ok: false, error: "bad_json", reply: "HTTP " + r.status }; });
+    }).then(function (d) {
+      if (d && d.usage) {
+        try { root.dispatchEvent(new CustomEvent("nexx-ai-usage", { detail: d.usage })); } catch (e) {}
+      }
+      var reply = d.reply || d.error || "ไม่มีข้อความตอบกลับ";
+      if (d.ok && d.usage && d.usage.state === "soft") {
+        reply += "\n\n⚠ ใช้ถึง Soft Cap แล้ว (" + d.usage.used + "/" + d.usage.hard + ") — เมื่อถึง Hard Cap จะถูกระงับ";
+      }
+      return { reply: reply, source: "ours", provider: d.provider || provider, gated: !!d.gated, error: d.ok === false ? d.error : null };
+    }).catch(function (err) {
+      return { reply: "เชื่อมระบบของเราไม่ได้ (" + (err && err.message ? err.message : String(err)) + ")", source: "gated", provider: provider, error: "fetch_failed", gated: true };
+    });
+  }
+
   /**
    * Send one chat turn. Returns { reply, source, provider, gated?, error? }
    */
@@ -170,6 +196,12 @@
 
     if (!message) {
       return Promise.resolve({ reply: "", error: "empty", source: "none" });
+    }
+
+    // Mode B "ใช้ระบบของเรา" (chosen in โปรไฟล์สมาชิก): server key + server-side soft/hard caps.
+    // Default stays BYOK / Local Agent exactly as before.
+    if (root.NexxAiUsage && root.NexxAiUsage.mode && root.NexxAiUsage.mode() === "ours") {
+      return chatViaOurs(message, provider, history);
     }
 
     return probeAgent(1200).then(function (health) {

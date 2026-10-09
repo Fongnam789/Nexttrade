@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>NEXTTRADE Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&family=Noto+Sans+Thai:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root { --line:rgba(212,165,64,.25); --line2:rgba(212,165,64,.45); --txt:#f3ead2; --dim:#a8987a; --gold2:#ffd770; --ok:#4fe0a0; --bad:#ff8a8f;
+      --mg:linear-gradient(180deg,#fff6cf 0%,#f3d47e 30%,#c9962f 55%,#f6dc8a 75%,#a8771f 100%);
+      --btn:linear-gradient(180deg,#ffeaa6 0%,#e6b850 45%,#b8862a 100%); }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; color:var(--txt); font:14.5px/1.6 "Noto Sans Thai","Kanit",sans-serif;
+      background:repeating-linear-gradient(45deg,rgba(212,165,64,.035) 0 1px,transparent 1px 22px),radial-gradient(1100px 520px at 50% -180px,rgba(212,165,64,.22),transparent 70%),#070605; background-attachment:fixed; }
+    header { display:flex; align-items:center; gap:12px; padding:14px 22px; border-bottom:1px solid var(--line); background:rgba(10,8,5,.85); position:sticky; top:0; z-index:5; }
+    .brand { font:600 19px "Kanit",sans-serif; letter-spacing:.2em; background:var(--mg); -webkit-background-clip:text; background-clip:text; color:transparent; }
+    .badge { font:600 11px "Kanit"; letter-spacing:.1em; color:#1c1405; background:var(--btn); border-radius:999px; padding:2px 10px; }
+    .sp { flex:1; }
+    main { max-width:1180px; margin:0 auto; padding:26px 20px 40px; }
+    .card { position:relative; background:linear-gradient(155deg,rgba(255,220,140,.075),rgba(255,220,140,.015) 45%,rgba(0,0,0,.28)); border:1px solid rgba(212,165,64,.32); border-radius:20px; padding:22px 24px; box-shadow:0 18px 50px rgba(0,0,0,.55); margin-bottom:20px; }
+    .card::before { content:""; position:absolute; left:28px; right:28px; top:-1px; height:2px; background:linear-gradient(90deg,transparent,#f6d77d,transparent); }
+    h1,h2 { font-family:"Kanit",sans-serif; background:var(--mg); -webkit-background-clip:text; background-clip:text; color:transparent; margin:0 0 12px; }
+    h1 { font-size:28px; } h2 { font-size:19px; }
+    label { display:block; margin-top:12px; color:#e6d3a3; font-size:13.5px; }
+    input, select { width:100%; margin-top:6px; background:rgba(5,4,3,.7); color:var(--txt); border:1px solid rgba(212,165,64,.3); border-radius:12px; padding:10px 13px; font:inherit; }
+    input:focus, select:focus { outline:none; border-color:var(--gold2); box-shadow:0 0 0 3px rgba(255,215,112,.15); }
+    button { font:600 13.5px "Kanit",sans-serif; border-radius:11px; padding:8px 14px; cursor:pointer; border:1px solid var(--line2); background:rgba(212,165,64,.08); color:#f0dca8; margin:2px 4px 2px 0; }
+    button.gold { background:var(--btn); color:#1c1405; border-color:#f6d77d; box-shadow:0 6px 18px rgba(212,165,64,.28); }
+    button.red { color:#ffb4b8; border-color:rgba(255,120,130,.45); background:rgba(255,100,110,.08); }
+    button:disabled { opacity:.4; cursor:not-allowed; }
+    .login { max-width:400px; margin:60px auto; }
+    .muted { color:var(--dim); font-size:13px; } .ok { color:var(--ok); } .bad { color:var(--bad); }
+    .warn { background:rgba(212,165,64,.12); border:1px solid rgba(212,165,64,.45); color:#f6dc8a; border-radius:12px; padding:10px 14px; font-size:13.5px; margin:8px 0; }
+    table { width:100%; border-collapse:separate; border-spacing:0; font-size:13px; border:1px solid var(--line); border-radius:14px; overflow:hidden; background:rgba(0,0,0,.25); }
+    th, td { text-align:left; padding:9px 10px; border-bottom:1px solid rgba(212,165,64,.12); vertical-align:top; }
+    th { color:#e9c96c; background:rgba(212,165,64,.1); font-weight:500; }
+    .st { font:600 11px "Kanit"; border-radius:999px; padding:2px 9px; border:1px solid; white-space:nowrap; }
+    .st.pending_payment { color:#bfae88; border-color:rgba(168,152,122,.4); }
+    .st.pending_approval { color:var(--gold2); border-color:var(--line2); }
+    .st.active { color:var(--ok); border-color:rgba(79,224,160,.4); }
+    .st.revoked { color:var(--bad); border-color:rgba(255,120,130,.45); }
+    .row { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; align-items:end; }
+    .scroll { overflow:auto; }
+    @media (max-width:700px) { .row { grid-template-columns:1fr 1fr; } }
+  </style>
+</head>
+<body>
+  <header>
+    <span class="brand">NEXTTRADE</span><span class="badge">ADMIN</span>
+    <span class="sp"></span>
+    <button id="logout" type="button" hidden>ออกจากระบบ</button>
+  </header>
+  <main>
+    <section id="loginView" class="card login" hidden>
+      <h1>เข้าสู่ระบบแอดมิน</h1>
+      <p class="muted">แยกจากการเข้าสู่ระบบ Google ของลูกค้า</p>
+      <form id="loginForm" autocomplete="on">
+        <label>ชื่อผู้ใช้ <input id="u" name="username" autocomplete="username" required maxlength="100" /></label>
+        <label>รหัสผ่าน <input id="p" name="password" type="password" autocomplete="current-password" required maxlength="200" /></label>
+        <div style="height:14px"></div>
+        <button class="gold" type="submit" id="loginBtn">เข้าสู่ระบบ</button>
+        <p id="loginMsg" class="muted"></p>
+      </form>
+    </section>
+
+    <section id="appView" hidden>
+      <div id="storeWarn"></div>
+      <div class="card">
+        <h2>คำขอใช้ EA / ไลเซนส์</h2>
+        <p class="muted">ยืนยันการชำระ → อนุมัติ → ไลเซนส์ใช้งานได้ (EA เช็คผ่าน /api/license/verify) · เพิกถอนได้ทุกเมื่อ</p>
+        <div class="scroll"><table id="reqTable"><tr><td class="muted">กำลังโหลด…</td></tr></table></div>
+        <p id="reqMsg" class="muted"></p>
+      </div>
+      <div class="card">
+        <h2>AI Soft / Hard Cap (โหมดใช้ระบบของเรา)</h2>
+        <p class="muted" id="capInfo"></p>
+        <div class="row">
+          <label>Soft cap (ข้อความ) <input id="capSoft" type="number" min="1" step="1" /></label>
+          <label>Hard cap (ข้อความ) <input id="capHard" type="number" min="1" step="1" /></label>
+          <label>รอบ <select id="capPeriod"><option value="month">ต่อเดือน</option><option value="day">ต่อวัน</option></select></label>
+          <div><button class="gold" id="capSave" type="button">บันทึก Cap</button></div>
+        </div>
+        <p id="capMsg" class="muted"></p>
+      </div>
+    </section>
+  </main>
+<script>
+(function () {
+  "use strict";
+  var H = { "Content-Type": "application/json", "X-NT-Admin": "1" };
+  var STATUS = { pending_payment: "รอชำระ", pending_approval: "รออนุมัติ", active: "ใช้งานอยู่", revoked: "ถูกเพิกถอน" };
+  var DELIV = { download: "ดาวน์โหลด", vps: "ติดตั้ง VPS" };
+  function $(id) { return document.getElementById(id); }
+  function el(t, c, x) { var n = document.createElement(t); if (c) n.className = c; if (x != null) n.textContent = x; return n; }
+  function api(op, method, body) {
+    return fetch("/api/admin/" + op, { method: method || "GET", headers: H, credentials: "same-origin", body: body ? JSON.stringify(body) : undefined })
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { j._status = r.status; return j; }); });
+  }
+  function show(logged) {
+    $("loginView").hidden = logged;
+    $("appView").hidden = !logged;
+    $("logout").hidden = !logged;
+    if (logged) load();
+  }
+  function act(action, id, btn) {
+    btn.disabled = true;
+    api("action", "POST", { action: action, id: id }).then(function (j) {
+      $("reqMsg").className = j._status === 200 ? "ok" : "bad";
+      $("reqMsg").textContent = j._status === 200 ? "อัปเดตแล้ว" : (j.error === "not_paid" ? "ต้องยืนยันการชำระก่อนอนุมัติ" : "ไม่สำเร็จ (" + j.error + ")");
+      if (j._status === 401) return show(false);
+      load();
+    });
+  }
+  function load() {
+    api("data").then(function (j) {
+      if (j._status === 401) return show(false);
+      var w = $("storeWarn");
+      w.innerHTML = "";
+      if (!j.durable) w.appendChild(el("div", "warn", "ยังไม่มีฐานข้อมูลถาวร (store: " + j.store + ") — ข้อมูลคำขอ/สถานะ/ตัวนับอยู่ในหน่วยความจำของเซิร์ฟเวอร์และอาจหายเมื่อรีสตาร์ท · ต่อ Vercel KV/Upstash (KV_REST_API_URL, KV_REST_API_TOKEN) เพื่อใช้งานจริง"));
+      var t = $("reqTable");
+      t.innerHTML = "";
+      var hr = el("tr");
+      ["วันที่", "ลูกค้า", "EA", "MT5", "รับแบบ", "สถานะ", "จัดการ"].forEach(function (h) { hr.appendChild(el("th", null, h)); });
+      t.appendChild(hr);
+      if (!j.requests || !j.requests.length) {
+        var tr0 = el("tr"); var td0 = el("td", "muted", "ยังไม่มีคำขอ"); td0.colSpan = 7; tr0.appendChild(td0); t.appendChild(tr0);
+      }
+      (j.requests || []).forEach(function (r) {
+        var tr = el("tr");
+        tr.appendChild(el("td", null, r.created_at ? new Date(r.created_at).toLocaleString("th-TH") : "—"));
+        tr.appendChild(el("td", null, r.email || "—"));
+        tr.appendChild(el("td", null, r.ea));
+        tr.appendChild(el("td", null, r.account + " · " + r.server));
+        tr.appendChild(el("td", null, DELIV[r.delivery] || "ยังไม่เลือก"));
+        var tdS = el("td"); tdS.appendChild(el("span", "st " + r.status, STATUS[r.status] || r.status)); tr.appendChild(tdS);
+        var tdA = el("td");
+        var b1 = el("button", null, "ยืนยันชำระ"); b1.type = "button"; b1.disabled = r.paid || r.revoked; b1.onclick = function () { act("confirm_payment", r.id, b1); };
+        var b2 = el("button", "gold", "อนุมัติ"); b2.type = "button"; b2.disabled = !r.paid || r.approved || r.revoked; b2.onclick = function () { act("approve", r.id, b2); };
+        var b3 = el("button", "red", r.revoked ? "คืนสิทธิ์" : "เพิกถอน"); b3.type = "button"; b3.onclick = function () { act(r.revoked ? "unrevoke" : "revoke", r.id, b3); };
+        tdA.appendChild(b1); tdA.appendChild(b2); tdA.appendChild(b3);
+        tr.appendChild(tdA);
+        t.appendChild(tr);
+      });
+      var c = j.caps || {};
+      $("capSoft").value = c.soft || "";
+      $("capHard").value = c.hard || "";
+      $("capPeriod").value = c.period || "month";
+      $("capInfo").textContent = "ตอนนี้: Soft " + c.soft + " · Hard " + c.hard + " ข้อความ/" + (c.period === "day" ? "วัน" : "เดือน") + " · ที่มา: " + (c.set_by === "admin" ? "แอดมินตั้ง" : c.set_by === "env" ? "env" : "ค่าเริ่มต้นชั่วคราว (ยังไม่ได้กำหนด)");
+    });
+  }
+  $("loginForm").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var m = $("loginMsg");
+    $("loginBtn").disabled = true;
+    m.className = "muted"; m.textContent = "กำลังตรวจสอบ…";
+    api("login", "POST", { username: $("u").value, password: $("p").value }).then(function (j) {
+      $("loginBtn").disabled = false;
+      $("p").value = "";
+      if (j._status === 200) { m.textContent = ""; return show(true); }
+      m.className = "bad";
+      m.textContent = j.error === "locked" ? "ล็อกชั่วคราว 15 นาที เพราะใส่รหัสผิดหลายครั้ง" : j.error === "admin_not_configured" ? "ยังไม่ได้ตั้งค่าบัญชีแอดมินบนเซิร์ฟเวอร์" : "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง";
+    });
+  });
+  $("logout").addEventListener("click", function () { api("logout", "POST", {}).then(function () { show(false); }); });
+  $("capSave").addEventListener("click", function () {
+    var m = $("capMsg");
+    api("action", "POST", { action: "set_caps", soft: Number($("capSoft").value), hard: Number($("capHard").value), period: $("capPeriod").value }).then(function (j) {
+      m.className = j._status === 200 ? "ok" : "bad";
+      m.textContent = j._status === 200 ? "บันทึก Cap แล้ว" : (j.error === "bad_caps" ? "ค่าไม่ถูกต้อง (Hard ต้อง ≥ Soft, จำนวนเต็มบวก)" : "ไม่สำเร็จ (" + j.error + ")");
+      load();
+    });
+  });
+  api("session").then(function (j) {
+    if (j._status === 503) { show(false); $("loginMsg").className = "bad"; $("loginMsg").textContent = "ยังไม่ได้ตั้งค่าบัญชีแอดมินบนเซิร์ฟเวอร์"; return; }
+    show(j._status === 200);
+  });
+})();
+</script>
+</body>
+</html>

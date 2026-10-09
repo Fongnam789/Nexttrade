@@ -1,0 +1,7 @@
+{
+  "rewrites": [{ "source": "/admin", "destination": "/admin.html" }],
+  "headers": [
+    { "source": "/admin.html", "headers": [{ "key": "X-Robots-Tag", "value": "noindex" }, { "key": "X-Frame-Options", "value": "DENY" }] },
+    { "source": "/admin", "headers": [{ "key": "X-Robots-Tag", "value": "noindex" }, { "key": "X-Frame-Options", "value": "DENY" }] }
+  ]
+}

@@ -8,6 +8,7 @@
 
   var GIS_SRC = "https://accounts.google.com/gsi/client";
   var LS_KEY = "nexx_google_session";
+  var TOKEN_KEY = "nexx_google_id_token";
   var state = { user: null, credential: null };
 
   function getClientId() {
@@ -55,6 +56,8 @@
 
   function onCredential(response) {
     state.credential = response && response.credential;
+    /* ID token kept for this tab only so server APIs (e.g. /api/license) can verify it; cleared on sign-out. */
+    try { if (state.credential) sessionStorage.setItem(TOKEN_KEY, state.credential); } catch (e) {}
     var payload = parseJwtPayload(state.credential);
     if (!payload || !payload.sub) {
       throw new Error("โทเค็น Google ไม่ถูกต้อง");
@@ -141,6 +144,7 @@
   function signOut() {
     saveSession(null);
     state.credential = null;
+    try { sessionStorage.removeItem(TOKEN_KEY); } catch (e) {}
     var clientId = getClientId();
     if (clientId && global.google && global.google.accounts && global.google.accounts.id) {
       try { global.google.accounts.id.disableAutoSelect(); } catch (e) {}
@@ -150,9 +154,21 @@
     }
   }
 
+  /** Raw Google ID token for server-side verification, or "" if missing/expired (then sign in again). */
+  function getCredential() {
+    var cred = state.credential;
+    if (!cred) {
+      try { cred = sessionStorage.getItem(TOKEN_KEY) || ""; } catch (e) { cred = ""; }
+    }
+    var p = cred && parseJwtPayload(cred);
+    if (!p || !p.exp || p.exp * 1000 < Date.now() + 30000) return "";
+    return cred;
+  }
+
   loadSession();
 
   global.NexxGoogleAuth = {
+    getCredential: getCredential,
     getClientId: getClientId,
     getUser: function () { return state.user || loadSession(); },
     init: init,
