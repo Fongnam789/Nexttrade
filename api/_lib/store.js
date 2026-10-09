@@ -31,8 +31,10 @@ const memoryStore = {
   async sadd(k, member) {
     const v = memAlive(k);
     const set = new Set(v ? JSON.parse(v.val) : []);
+    const added = set.has(member) ? 0 : 1;
     set.add(member);
     mem.set(k, { val: JSON.stringify([...set]), exp: 0 });
+    return added; // same as Redis SADD: 1 = newly added, 0 = already present
   },
   async srem(k, member) {
     const v = memAlive(k);

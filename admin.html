@@ -46,6 +46,44 @@
     .row { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; align-items:end; }
     .scroll { overflow:auto; }
     @media (max-width:700px) { .row { grid-template-columns:1fr 1fr; } }
+    /* AI Model */
+    .ai-status { display:grid; gap:4px; margin:4px 0 12px; font-size:14px; }
+    .ai-id { font-family:ui-monospace,Consolas,monospace; font-size:12px; color:#e6d3a3; }
+    .ai-note { font-size:12px; color:#ffd770; margin-top:2px; }
+    .ai-src { font-size:12px; }
+    a.ai-src { color:#ffd770; }
+    .ai-tier { display:grid; grid-template-columns:110px 80px 10px 80px; gap:6px; align-items:center; margin:3px 0; }
+    .ai-tier input, input.ai-cap { margin-top:0; padding:7px 9px; }
+    input.ai-cap { width:90px; }
+    .ai-tl { font-size:11.5px; }
+    .ai-small { font-size:11px; }
+    input.ai-radio { width:18px; height:18px; margin:0; accent-color:#e6b850; }
+    tr.ai-on td { background:rgba(212,165,64,.09); }
+    .ai-ctrl { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:12px; align-items:end; margin:10px 0; }
+    .ai-ctrl label { font-size:13px; color:#e6d3a3; }
+    .ai-chk { display:flex; gap:8px; align-items:center; }
+    .ai-chk input { width:auto; margin:0; }
+    .ai-cols { display:flex; flex-wrap:wrap; gap:6px; margin:8px 0 12px; }
+    .ai-chip { display:inline-flex; gap:6px; align-items:center; font-size:12.5px; padding:4px 10px; border-radius:999px; border:1px solid var(--line); color:var(--dim); cursor:pointer; user-select:none; }
+    .ai-chip.on { color:#fff3d0; border-color:var(--line2); background:rgba(212,165,64,.1); }
+    .ai-chip input { width:auto; margin:0; }
+    .ai-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; border-radius:14px; }
+    table.ai-cost { width:auto; min-width:100%; font-size:12.5px; }
+    table.ai-cost th, table.ai-cost td { white-space:nowrap; padding:7px 10px; }
+    .ai-mh { cursor:pointer; text-align:center; border-left:1px solid rgba(212,165,64,.18); }
+    .ai-sub { text-align:center; font-size:11.5px; color:var(--dim); border-left:1px solid rgba(212,165,64,.12); }
+    .ai-num { text-align:right; font-variant-numeric:tabular-nums; border-left:1px solid rgba(212,165,64,.08); }
+    .ai-sticky { position:sticky; left:0; background:#14100a; z-index:1; font-weight:600; }
+    .ai-act { background:rgba(212,165,64,.12); color:#fff3d0; }
+    th.ai-act { color:#ffd770; }
+    .ai-hl { background:rgba(79,224,160,.12) !important; color:#d9fff0; }
+    .ai-est { display:inline-block; font:600 11px "Kanit"; letter-spacing:.06em; color:#1c1405; background:var(--btn); border-radius:999px; padding:2px 10px; margin-left:8px; vertical-align:middle; }
+    @media (max-width:700px) { .ai-ctrl { grid-template-columns:1fr 1fr; } .ai-tier { grid-template-columns:1fr 70px 8px 70px; } }
+    .ai-bar { height:8px; border-radius:99px; background:rgba(255,255,255,.08); overflow:hidden; min-width:120px; margin-top:4px; }
+    .ai-bar i { display:block; height:100%; background:linear-gradient(90deg,#e6b850,#ffd770); }
+    .ai-bar i.low { background:#ff6b6b; }
+    .ai-banner { background:rgba(255,107,107,.12); border:1px solid rgba(255,107,107,.55); color:#ffd0d0; border-radius:12px; padding:10px 14px; font-size:13.5px; margin:8px 0; }
+    tr.ai-unack td { color:#ffd0d0; }
   </style>
 </head>
 <body>
@@ -69,6 +107,45 @@
 
     <section id="appView" hidden>
       <div id="storeWarn"></div>
+      <div id="aiAlertBanner"></div>
+      <div class="card" id="aiCard">
+        <h2>AI Model — ใช้ระบบของเรา</h2>
+        <p class="muted">เลือกโมเดลที่ลูกค้าโหมด "ใช้ระบบของเรา" จะใช้ (ผ่าน Vercel AI Gateway) · ราคา/Cap แก้ได้และบันทึกฝั่งเซิร์ฟเวอร์ · Cap ต่อโมเดล = คำขอต่อผู้ใช้ต่อเดือน (บังคับใช้ใน /api/chat ตามโมเดลที่ใช้งาน)</p>
+        <div class="ai-status" id="aiStatus"></div>
+        <div class="scroll"><table id="aiModels"><tr><td class="muted">กำลังโหลด…</td></tr></table></div>
+        <p id="aiMsg" class="muted"></p>
+        <h2 style="margin-top:18px">ประมาณการค่าใช้จ่ายต่อเดือน <span class="ai-est">ESTIMATE</span></h2>
+        <div class="ai-ctrl">
+          <label>Input tokens / คำขอ <input id="aiIn" type="number" min="0" step="50" value="1500" /></label>
+          <label>Output tokens / คำขอ <input id="aiOut" type="number" min="0" step="50" value="500" /></label>
+          <label>ราคา ณ วันที่ <input id="aiDay" type="date" /></label>
+          <label>แสดงคอลัมน์ <select id="aiShow"><option value="both">Soft + Hard</option><option value="soft">Soft cap</option><option value="hard">Hard cap</option></select></label>
+          <div>
+            <label class="ai-chk"><input id="aiFactor" type="checkbox" checked /> ใช้ token factor</label>
+            <button type="button" id="aiAssumpSave">บันทึกสมมติฐาน</button>
+            <div class="muted ai-small" id="aiAssumpInfo"></div>
+          </div>
+        </div>
+        <div class="ai-cols" id="aiCols"></div>
+        <div class="ai-scroll"><table class="ai-cost" id="aiCost"></table></div>
+        <p class="muted" id="aiCostNote"></p>
+      </div>
+      <div class="card" id="aiBudgetCard">
+        <h2>งบ Token / เครดิต AI ที่ซื้อไว้ + แจ้งเตือนใกล้หมด</h2>
+        <p class="muted">ใส่ยอดที่ซื้อ (USD credit หรือจำนวน tokens) ต่อโมเดลหรือต่อผู้ให้บริการ · ระบบนับจากการใช้งานจริงของ /api/chat โหมดใช้ระบบของเรา (tokens จาก response ของ AI × ราคาในตารางด้านบน) · แจ้งเตือนเมื่อเหลือ 20% / 10% / 5% ครั้งเดียวต่อเกณฑ์ต่อรอบ · กด "เติม token" เพื่อเริ่มรอบใหม่</p>
+        <div id="aiChannels" class="muted"></div>
+        <div class="ai-ctrl">
+          <label>ขอบเขต <select id="bScope"><option value="model">ต่อโมเดล</option><option value="provider">ต่อผู้ให้บริการ</option></select></label>
+          <label>โมเดล / ผู้ให้บริการ <select id="bTarget"></select></label>
+          <label>หน่วย <select id="bUnit"><option value="usd">USD credit</option><option value="tokens">Tokens</option></select></label>
+          <label>ยอดที่ซื้อ <input id="bAmount" type="number" min="0" step="any" placeholder="เช่น 50" /></label>
+          <div><button class="gold" type="button" id="bAdd">บันทึกงบ</button></div>
+        </div>
+        <div class="scroll"><table id="aiBudgets"></table></div>
+        <h2 style="margin-top:16px">รายการแจ้งเตือน <button type="button" id="aiAck" style="margin-left:8px">รับทราบทั้งหมด</button></h2>
+        <div class="scroll"><table id="aiAlerts"></table></div>
+        <p id="bMsg" class="muted"></p>
+      </div>
       <div class="card">
         <h2>Social Trade — Master</h2>
         <p class="muted">ผู้สมัคร Master จากระบบ NEXTTRADE เท่านั้น · อนุมัติแล้วจึงแสดงในหน้า Social Trade · ลิงก์ Brokeree/Myfxbook เป็นของ Master เอง (ตรวจก่อนอนุมัติ)</p>
@@ -94,6 +171,7 @@
       </div>
     </section>
   </main>
+<script src="/admin-ai.js"></script>
 <script>
 (function () {
   "use strict";
@@ -199,10 +277,12 @@
         t.appendChild(tr);
       });
       renderMasters(j.masters || []);
+      if (window.NtAdminAI) window.NtAdminAI.render(j.ai, j.caps);
       var c = j.caps || {};
       $("capSoft").value = c.soft || "";
       $("capHard").value = c.hard || "";
       $("capPeriod").value = c.period || "month";
+      if (c.set_by === "model") { $("capInfo").textContent = "ตอนนี้ใช้ Cap ของโมเดลที่ใช้งาน (" + c.model + "): Soft " + c.soft + " · Hard " + c.hard + " ข้อความ/เดือน · ค่าด้านล่างใช้เมื่อไม่ได้เลือกโมเดล"; } else
       $("capInfo").textContent = "ตอนนี้: Soft " + c.soft + " · Hard " + c.hard + " ข้อความ/" + (c.period === "day" ? "วัน" : "เดือน") + " · ที่มา: " + (c.set_by === "admin" ? "แอดมินตั้ง" : c.set_by === "env" ? "env" : "ค่าเริ่มต้นชั่วคราว (ยังไม่ได้กำหนด)");
     });
   }

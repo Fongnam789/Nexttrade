@@ -8,6 +8,8 @@
  *        action: confirm_payment | approve | revoke | unrevoke | set_caps
  *                | issue  {ea, account, server, test?}  → admin-issued license (signed server-side, st=pending_payment)
  *                | delete {id}                          → remove a license record (e.g. test records)
+ *                | ai_set_active {id|null} | ai_set_model {id, pricing?, soft?, hard?} | ai_reset_model {id}
+ *                | ai_set_assumptions {input_tokens, output_tokens, apply_token_factor}   → AI Model section
  *                | master_approve | master_reject {note?} | master_suspend | master_delete  {id: m_…}  → Social Trade Masters
  * Mutating calls need header X-NT-Admin: 1 (with SameSite=Strict cookie → CSRF protection). No CORS headers on purpose.
  */
@@ -19,10 +21,26 @@ const L = require("../_lib/license");
 const crypto = require("crypto");
 const catalog = require("../../ea_catalog.json");
 const M = require("../_lib/social");
+const AM = require("../_lib/ai-models");
+const AB = require("../_lib/ai-budget");
 
 function send(res, status, obj) {
   res.setHeader("Cache-Control", "no-store");
   return L.send(res, status, obj);
+}
+async function aiState() {
+  const act = await AM.active();
+  return {
+    models: await AM.models(),
+    active: act ? act.id : null,
+    activated_at: act ? act.activated_at : null,
+    assumptions: await AM.assumptions(),
+    today: AM.todayBkk(),
+    meta: { currency: AM.BASE.currency, unit: AM.BASE.unit, verified_at: AM.BASE.verified_at, default_caps: AM.DEF_CAPS },
+    gateway_key_set: !!String(process.env.AI_GATEWAY_API_KEY || "").trim(),
+    server_mode_enabled: String(process.env.CHAT_ALLOW_SERVER_KEYS || "") === "1",
+    budget: await AB.state(),
+  };
 }
 function csrfOk(req) {
   return String(req.headers["x-nt-admin"] || "") === "1";
@@ -69,6 +87,7 @@ module.exports = async function handler(req, res) {
       return send(res, 200, {
         requests: list.map((r) => Object.assign(R.publicView(r), { email: r.email || "" })),
         caps: await C.caps(),
+        ai: await aiState(),
         masters: await Promise.all((await M.listMasters()).map(async (m) => Object.assign(M.ownerView(m), { email: m.email || "", followers: await M.followerCount(m.id) }))),
         store: st.kind,
         durable: st.durable,
@@ -101,6 +120,23 @@ module.exports = async function handler(req, res) {
           created_at: Date.now(), license_expires_at: new Date(payload.exp * 1000).toISOString(),
         });
         return send(res, 200, { request: R.publicView(rec0), key: key });
+      }
+      if (a.indexOf("ai_") === 0) {
+        try {
+          if (a === "ai_set_active") await AM.setActive(body.id || null);
+          else if (a === "ai_set_model") await AM.setModel(String(body.id || ""), body);
+          else if (a === "ai_reset_model") await AM.resetModel(String(body.id || ""));
+          else if (a === "ai_set_assumptions") await AM.setAssumptions(body);
+          else if (a === "ai_budget_set" || a === "ai_budget_topup" || a === "ai_budget_delete" || a === "ai_alerts_ack") {
+            const r = a === "ai_budget_set" ? await AB.set(body)
+              : a === "ai_budget_topup" ? await AB.topup(String(body.key || ""), body.amount)
+              : a === "ai_budget_delete" ? await AB.remove(String(body.key || ""))
+              : await AB.ackAll();
+            if (r.error) return send(res, 400, { error: r.error });
+          }
+          else return send(res, 400, { error: "unknown_action" });
+        } catch (e) { return send(res, 400, { error: String(e.message || "bad_request").slice(0, 40) }); }
+        return send(res, 200, { ai: await aiState(), caps: await C.caps() });
       }
       if (a.indexOf("master_") === 0) {
         const m = await M.getMaster(body.id);

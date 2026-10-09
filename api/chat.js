@@ -1,10 +1,13 @@
 /**
  * BYOK chat proxy for Vercel serverless.
  * Customer API key MUST arrive in X-Customer-Api-Key (or body.api_key).
- * Never reads company env keys for LLM. No secrets in repo.
+ * BYOK never reads company env keys. "ใช้ระบบของเรา" (mode:"ours") needs CHAT_ALLOW_SERVER_KEYS=1 + AI_GATEWAY_API_KEY and
+ * an admin-selected active model (cfg:ai_model_active); metered by that model's soft/hard caps. No secrets in repo.
  */
 const G = require("./_lib/google");
 const U = require("./_lib/ai-usage");
+const AM = require("./_lib/ai-models");
+const AB = require("./_lib/ai-budget");
 
 const SYSTEM = [
   "You are Nexttrade AI assistant for a Thai FX/gold trader dashboard.",
@@ -41,6 +44,22 @@ function readBody(req) {
     });
     req.on("error", reject);
   });
+}
+
+/** "ใช้ระบบของเรา": Vercel AI Gateway (OpenAI-compatible), model = admin-selected active model id (e.g. "openai/gpt-6-luna"). */
+async function callGateway(key, model, messages) {
+  const r = await fetch("https://ai-gateway.vercel.sh/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: "Bearer " + key, "Content-Type": "application/json" },
+    body: JSON.stringify({ model, temperature: 0.2, messages }),
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    const err = new Error((j && j.error && (j.error.message || j.error)) || "gateway_http_" + r.status);
+    err.status = r.status;
+    throw err;
+  }
+  return { reply: j.choices[0].message.content, usage: j.usage || null };
 }
 
 async function callOpenAI(key, messages) {
@@ -192,6 +211,7 @@ module.exports = async function handler(req, res) {
 
   let effectiveKey = key;
   let usage = null;
+  let gatewayModel = "";
   const wantsOurs = !key && (String(body.mode || "") === "ours" || allowServer);
   if (wantsOurs) {
     // "ใช้ระบบของเรา": our server key, only for a verified Google account, metered by soft/hard caps (api/_lib/ai-caps.js).
@@ -211,16 +231,18 @@ module.exports = async function handler(req, res) {
     if (!allowServer) {
       return sendJson(503, { ok: false, error: "our_key_not_configured", gated: true, reply: "ระบบของเรายังไม่เปิดใช้คีย์กลาง (แอดมินยังไม่ตั้งค่า) — ใช้ API token ของคุณเองไปก่อน" });
     }
-    const envMap = {
-      openai: process.env.OPENAI_API_KEY,
-      anthropic: process.env.ANTHROPIC_API_KEY,
-      gemini: process.env.GEMINI_API_KEY,
-      xai: process.env.XAI_API_KEY,
-    };
-    effectiveKey = (envMap[provider] || "").trim();
-    if (!effectiveKey) {
-      return sendJson(503, { ok: false, error: "our_key_not_configured", gated: true, reply: "ระบบของเรายังไม่มีคีย์สำหรับผู้ให้บริการนี้" });
+    // Model = the one the admin selected in /admin → AI Model (stored server-side), called via Vercel AI Gateway.
+    let am = null;
+    try { am = await AM.active(); } catch (e) { am = null; }
+    if (!am) {
+      return sendJson(503, { ok: false, error: "no_active_model", gated: true, reply: "ระบบของเรายังไม่ได้เลือกโมเดล (แอดมินยังไม่ตั้งค่า) — ใช้ API token ของคุณเองไปก่อน" });
     }
+    effectiveKey = String(process.env.AI_GATEWAY_API_KEY || "").trim();
+    if (!effectiveKey) {
+      return sendJson(503, { ok: false, error: "our_key_not_configured", gated: true, reply: "ระบบของเรายังไม่มีคีย์ AI Gateway (แอดมินยังไม่ตั้งค่า) — ใช้ API token ของคุณเองไปก่อน" });
+    }
+    provider = "gateway";
+    gatewayModel = am.id;
     let r;
     try {
       r = await U.consume(user.sub);
@@ -269,7 +291,13 @@ module.exports = async function handler(req, res) {
 
   try {
     let reply;
-    if (provider === "openai") reply = await callOpenAI(effectiveKey, messages);
+    if (provider === "gateway") {
+      const g = await callGateway(effectiveKey, gatewayModel, messages);
+      reply = g.reply;
+      // Purchased-budget tracking + low-balance alerts (real token usage from the gateway response; never throws).
+      await AB.record(gatewayModel, g.usage);
+    }
+    else if (provider === "openai") reply = await callOpenAI(effectiveKey, messages);
     else if (provider === "anthropic") reply = await callAnthropic(effectiveKey, messages);
     else if (provider === "gemini") reply = await callGemini(effectiveKey, messages);
     else if (provider === "xai") reply = await callXai(effectiveKey, messages);
@@ -281,7 +309,7 @@ module.exports = async function handler(req, res) {
     }
     res.statusCode = 200;
     res.setHeader("Content-Type", "application/json; charset=utf-8");
-    res.end(JSON.stringify({ ok: true, provider, reply, gated: false, source: key ? "byok" : "server_env", usage, soft_warning: !!(usage && usage.state !== "ok") }));
+    res.end(JSON.stringify({ ok: true, provider, model: gatewayModel || undefined, reply, gated: false, source: key ? "byok" : "server_env", usage, soft_warning: !!(usage && usage.state !== "ok") }));
   } catch (e) {
     res.statusCode = e.status && e.status >= 400 ? e.status : 502;
     res.setHeader("Content-Type", "application/json; charset=utf-8");
