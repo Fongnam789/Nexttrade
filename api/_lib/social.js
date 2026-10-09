@@ -36,6 +36,15 @@ function myfxbookUrl(v) {
   return s;
 }
 
+/** Profit sharing % entered by the Master: "" / null → null; 0–100 with ≤ 2 decimals; anything else → undefined (invalid). */
+function pct(v) {
+  if (v == null || String(v).trim() === "") return null;
+  const s = String(v).trim().replace(/%$/, "");
+  if (!/^\d{1,3}(\.\d{1,2})?$/.test(s)) return undefined;
+  const n = Number(s);
+  return n >= 0 && n <= 100 ? n : undefined;
+}
+
 /** Validate master profile input. Returns { ok, value } or { ok:false, error, field }. */
 function validate(body) {
   const v = {
@@ -45,7 +54,10 @@ function validate(body) {
     brokeree_url: httpsUrl(body.brokeree_url),
     risk: String(body.risk || ""),
     min_deposit: cleanText(body.min_deposit, 60),
+    profit_share_pct: pct(body.profit_share_pct),
+    fee_details: cleanText(body.fee_details, 300),
   };
+  if (v.profit_share_pct === undefined) return { ok: false, error: "bad_profit_share", field: "profit_share_pct" };
   if (v.display_name.length < 2) return { ok: false, error: "bad_display_name", field: "display_name" };
   if (v.strategy.length < 20) return { ok: false, error: "bad_strategy", field: "strategy" };
   if (v.myfxbook_url === null) return { ok: false, error: "bad_myfxbook_url", field: "myfxbook_url" };
@@ -106,6 +118,7 @@ function publicView(m, followers) {
   return {
     id: m.id, display_name: m.display_name, strategy: m.strategy, myfxbook_url: m.myfxbook_url || "",
     brokeree_url: m.brokeree_url, risk: m.risk, min_deposit: m.min_deposit || "",
+    profit_share_pct: typeof m.profit_share_pct === "number" ? m.profit_share_pct : null, fee_details: m.fee_details || "",
     approved_at: m.approved_at || null, followers: followers == null ? undefined : followers,
   };
 }

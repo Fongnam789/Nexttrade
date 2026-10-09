@@ -97,4 +97,4 @@ async function cachedProbe(url) {
   return p;
 }
 
-module.exports = { probe, cachedProbe, frameAllowed, privateIp };
+module.exports = { probe, cachedProbe, frameAllowed, privateIp, publicHost };

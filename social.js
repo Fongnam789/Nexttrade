@@ -17,6 +17,7 @@
     bad_myfxbook_url: "ลิงก์ Myfxbook ต้องขึ้นต้นด้วย https://www.myfxbook.com/…",
     bad_brokeree_url: "ลิงก์ Brokeree Social Trading ต้องเป็น https:// (ลิงก์จากโบรกเกอร์ของคุณ)",
     bad_risk: "เลือกระดับความเสี่ยง",
+    bad_profit_share: "Profit sharing ต้องเป็นตัวเลข 0–100 (ทศนิยมไม่เกิน 2 ตำแหน่ง)",
     google_login_required: "ต้องเข้าสู่ระบบ Google อีกครั้งในแท็บนี้",
     login_again: "ต้องเข้าสู่ระบบ Google อีกครั้งในแท็บนี้",
     already_pending: "ส่งใบสมัครแล้ว — รอแอดมินอนุมัติ",
@@ -83,6 +84,67 @@
     ["socList", "socDetail", "socMe"].forEach(function (id) { var n = $(id); if (n) n.hidden = id !== view; });
   }
 
+  /* ---------- offer terms: Brokeree (server-read) first, else Master-entered, never invented ---------- */
+  var INTERVAL = { PerTrade: "ต่อออเดอร์", Daily: "รายวัน", Weekly: "รายสัปดาห์", Monthly: "รายเดือน", Quarterly: "รายไตรมาส", Yearly: "รายปี", Annually: "รายปี" };
+  function fmtNum(n) { return Number(n).toLocaleString("en-US", { maximumFractionDigits: 2 }); }
+  function fmtTime(iso) {
+    try { return new Date(iso).toLocaleString("th-TH", { timeZone: "Asia/Bangkok", dateStyle: "medium", timeStyle: "short" }) + " (เวลาไทย)"; } catch (e) { return iso; }
+  }
+  /** Returns { profit, profitSrc, min, minSrc, bk } ; src = "brokeree" | "master" | "" */
+  function terms(m) {
+    var bk = m.brokeree_terms && m.brokeree_terms.ok && m.brokeree_terms.offer_found ? m.brokeree_terms : null;
+    var t = { bk: bk, profit: "", profitSrc: "", min: "", minSrc: "" };
+    if (bk && bk.performance_fee_pct != null) {
+      t.profit = fmtNum(bk.performance_fee_pct) + "%" + (INTERVAL[bk.performance_interval] ? " · " + INTERVAL[bk.performance_interval] : "");
+      t.profitSrc = "brokeree";
+    } else if (m.profit_share_pct != null) { t.profit = fmtNum(m.profit_share_pct) + "%"; t.profitSrc = "master"; }
+    if (bk && bk.min_balance != null) { t.min = fmtNum(bk.min_balance) + (bk.currency ? " " + bk.currency : ""); t.minSrc = "brokeree"; }
+    else if (m.min_deposit) { t.min = m.min_deposit; t.minSrc = "master"; }
+    return t;
+  }
+  function srcTag(src) {
+    if (src === "brokeree") return el("span", "soc-src bk", "จาก Brokeree");
+    if (src === "master") return el("span", "soc-src ms", "ข้อมูลจาก Master");
+    return el("span", "soc-src", "ไม่ได้ระบุ");
+  }
+  function termChip(label, val, src) {
+    var c = el("span", "soc-term");
+    c.appendChild(el("span", "soc-term-l", label));
+    c.appendChild(el("b", null, val || "—"));
+    c.appendChild(srcTag(val ? src : ""));
+    return c;
+  }
+  function termsCard(m) {
+    var t = terms(m);
+    var bkRaw = m.brokeree_terms;
+    var card = el("div", "card soc-terms");
+    card.appendChild(el("h2", null, "เงื่อนไข / ค่าธรรมเนียม"));
+    var rows = el("div", "soc-trows");
+    function row(label, val, src, note) {
+      var r = el("div", "soc-trow");
+      r.appendChild(el("span", "soc-tl", label));
+      var v = el("span", "soc-tv");
+      v.appendChild(el("b", null, val || "—"));
+      if (val) v.appendChild(srcTag(src));
+      if (note) v.appendChild(el("span", "muted soc-tnote", note));
+      r.appendChild(v);
+      rows.appendChild(r);
+    }
+    row("Profit sharing (Performance fee)", t.profit, t.profitSrc);
+    row("เงินลงทุนขั้นต่ำ", t.min, t.minSrc, t.minSrc === "brokeree" && t.bk.currency === "USC" ? "USC = เซ็นต์ดอลลาร์ (1 USD = 100 USC)" : "");
+    if (t.bk && t.bk.management_fee != null) row("Management fee", fmtNum(t.bk.management_fee) + (INTERVAL[t.bk.management_fee_interval] ? " · " + INTERVAL[t.bk.management_fee_interval] : ""), "brokeree", "ตามที่โบรกเกอร์เผยแพร่ (หน่วยตามระบบ Brokeree)");
+    if (t.bk && t.bk.registration_fee != null) row("Registration fee", fmtNum(t.bk.registration_fee) + (t.bk.currency ? " " + t.bk.currency : ""), "brokeree");
+    if (t.bk && t.bk.offer_name) row("ข้อเสนอ (Offer)", t.bk.offer_name + (t.bk.provider_nickname ? " · " + t.bk.provider_nickname : ""), "brokeree");
+    if (m.fee_details) row("รายละเอียดเพิ่มเติม", m.fee_details, "master");
+    card.appendChild(rows);
+    var foot = el("p", "muted soc-tfoot");
+    if (bkRaw && bkRaw.ok && bkRaw.offer_found) foot.textContent = "อ่านจากลิงก์ Brokeree ของ Master (" + (bkRaw.host || "") + ") เมื่อ " + fmtTime(bkRaw.fetched_at) + " · แคช 6 ชม. · ตรวจเงื่อนไขล่าสุดที่หน้าโบรกเกอร์ก่อน Copy";
+    else if (bkRaw && bkRaw.ok && !bkRaw.offer_found) foot.textContent = "พบผู้ให้บริการบน Brokeree แต่ระบุข้อเสนอไม่ได้ (" + (bkRaw.offers_count || 0) + " ข้อเสนอ) · ใช้ข้อมูลจาก Master · ตรวจล่าสุด " + fmtTime(bkRaw.fetched_at);
+    else foot.textContent = "อ่านเงื่อนไขจากลิงก์ Brokeree อัตโนมัติไม่ได้" + (bkRaw && bkRaw.reason === "unsupported_link" ? " (ลิงก์ไม่ใช่รูปแบบ …/portal/registration/subscription/<id>/<offer>)" : "") + " · ใช้ข้อมูลจาก Master" + (bkRaw && bkRaw.fetched_at ? " · ตรวจล่าสุด " + fmtTime(bkRaw.fetched_at) : "");
+    card.appendChild(foot);
+    return card;
+  }
+
   /* ---------- list ---------- */
   function masterCard(m) {
     var c = el("button", "card ea-card soc-card");
@@ -96,7 +158,11 @@
     c.appendChild(top);
     c.appendChild(el("p", "ea-tagline soc-clamp", m.strategy));
     var meta = el("div", "ea-meta");
-    meta.appendChild(el("span", "ea-chip dim", "ขั้นต่ำ: " + (m.min_deposit || "—")));
+    var t = terms(m);
+    var tg = el("div", "soc-terms-mini");
+    tg.appendChild(termChip("Profit sharing", t.profit, t.profitSrc));
+    tg.appendChild(termChip("ลงทุนขั้นต่ำ", t.min, t.minSrc));
+    c.appendChild(tg);
     meta.appendChild(el("span", "ea-chip dim", "ผู้ติดตามในระบบ: " + (m.followers || 0)));
     if (m.myfxbook_url) meta.appendChild(el("span", "ea-chip ok", "มี Myfxbook"));
     c.appendChild(meta);
@@ -169,7 +235,9 @@
       hd.appendChild(el("h1", "ea-title", m.display_name));
       var sub = el("div", "ea-sub");
       sub.appendChild(el("span", "ea-chip soc-risk-" + m.risk, "ความเสี่ยง: " + (RISK[m.risk] || m.risk)));
-      sub.appendChild(el("span", "ea-chip dim", "ขั้นต่ำ: " + (m.min_deposit || "—")));
+      var tt = terms(m);
+      sub.appendChild(el("span", "ea-chip", "Profit sharing: " + (tt.profit || "—")));
+      sub.appendChild(el("span", "ea-chip dim", "ลงทุนขั้นต่ำ: " + (tt.min || "—")));
       var fc = el("span", "ea-chip dim", "ผู้ติดตามในระบบ: " + (m.followers || 0));
       sub.appendChild(fc);
       hd.appendChild(sub);
@@ -182,6 +250,7 @@
       hero.appendChild(msg);
       body.appendChild(hero);
       renderFollow(act, msg, m, fc);
+      body.appendChild(termsCard(m));
 
       var grid = el("div", "grid cols-2 soc-grid2");
       var desc = el("div", "card");
@@ -248,6 +317,21 @@
   }
   function renderBrokeree(box, m, p) {
     box.innerHTML = "";
+    var bt = m.brokeree_terms;
+    if (bt && bt.ok) {
+      /* Recognised Brokeree portal offer link: link-out only. The portal is a login/registration app that errors inside
+         an iframe (tested: "Forbidden"), and clients should enter broker credentials on the broker's own page, not ours. */
+      var pv0 = el("div", "soc-preview");
+      var tx0 = el("div");
+      tx0.appendChild(el("span", "muted soc-site", "พอร์ทัล Brokeree ของโบรกเกอร์ · " + (bt.host || "")));
+      tx0.appendChild(el("strong", null, (bt.offer_name || "ข้อเสนอของ Master") + (bt.provider_nickname ? " · " + bt.provider_nickname : "")));
+      tx0.appendChild(el("p", "muted", "เปิดหน้าโบรกเกอร์เพื่อสมัคร/เข้าสู่ระบบและเริ่ม Copy · กรอกรหัสผ่านบนหน้าโบรกเกอร์เท่านั้น"));
+      pv0.appendChild(tx0);
+      box.appendChild(pv0);
+      box.appendChild(link(m.brokeree_url, "btn soc-btn", "เปิดหน้า Brokeree ของ Master ↗"));
+      box.appendChild(el("p", "muted soc-url", m.brokeree_url));
+      return;
+    }
     if (p && p.ok && (p.title || p.image || p.description)) {
       var pv = el("div", "soc-preview");
       if (p.image) {
@@ -341,15 +425,20 @@
     [["", "— เลือก —"], ["low", "ต่ำ"], ["medium", "กลาง"], ["high", "สูง"]].forEach(function (o) { var op = el("option", null, o[1]); op.value = o[0]; risk.appendChild(op); });
     risk.value = (m && m.risk) || "";
     var dep = el("input"); dep.maxLength = 60; dep.placeholder = "เช่น 100 USD"; dep.value = (m && m.min_deposit) || "";
+    var ps = el("input"); ps.inputMode = "decimal"; ps.maxLength = 6; ps.placeholder = "เช่น 30"; ps.value = m && m.profit_share_pct != null ? String(m.profit_share_pct) : "";
+    var fd = el("textarea"); fd.maxLength = 300; fd.rows = 2; fd.placeholder = "เช่น คิด Profit sharing รายสัปดาห์ · ไม่มีค่าแรกเข้า"; fd.value = (m && m.fee_details) || "";
     card.appendChild(field("ชื่อที่แสดง (Master)", name));
     card.appendChild(field("กลยุทธ์ / คำอธิบาย", strat));
     var g = el("div", "ea-req-grid soc-form-grid");
     g.appendChild(field("ลิงก์ Brokeree Social Trading", bk, "ลิงก์จากโบรกเกอร์ของคุณ (https) · ลูกค้ากดแล้วเข้าร่วม Copy ผ่านลิงก์นี้"));
     g.appendChild(field("ลิงก์ Myfxbook", fx, "ไม่บังคับ · ต้องเป็น https://www.myfxbook.com/…"));
     g.appendChild(field("ระดับความเสี่ยง", risk));
-    g.appendChild(field("เงินฝากขั้นต่ำ", dep, "ข้อความอิสระ"));
+    g.appendChild(field("เงินลงทุนขั้นต่ำ", dep, "ข้อความอิสระ · ใช้เมื่ออ่านจาก Brokeree ไม่ได้"));
+    g.appendChild(field("Profit sharing (%)", ps, "0–100 · ใช้เมื่ออ่านจาก Brokeree ไม่ได้"));
     card.appendChild(g);
-    [name, strat, fx, bk, risk, dep].forEach(function (i) { i.disabled = !!readonly; });
+    card.appendChild(field("รายละเอียดค่าธรรมเนียม / เงื่อนไข", fd, "ไม่บังคับ · แสดงเป็น 'ข้อมูลจาก Master'"));
+    card.appendChild(el("p", "muted soc-hint", "ระบบจะอ่าน Profit sharing / เงินลงทุนขั้นต่ำจากลิงก์ Brokeree รูปแบบ …/portal/registration/subscription/<id>/<offer> ให้อัตโนมัติ · ถ้าอ่านไม่ได้จะใช้ค่าที่คุณกรอก"));
+    [name, strat, fx, bk, risk, dep, ps, fd].forEach(function (i) { i.disabled = !!readonly; });
     if (readonly) return;
     var send = el("button", "btn", mode === "profile" ? "บันทึกโปรไฟล์ Master" : "ส่งใบสมัคร Master");
     send.type = "button";
@@ -357,13 +446,14 @@
     card.appendChild(send);
     card.appendChild(msg);
     send.addEventListener("click", function () {
-      var v = { display_name: name.value.trim(), strategy: strat.value.trim(), myfxbook_url: fx.value.trim(), brokeree_url: bk.value.trim(), risk: risk.value, min_deposit: dep.value.trim() };
+      var v = { display_name: name.value.trim(), strategy: strat.value.trim(), myfxbook_url: fx.value.trim(), brokeree_url: bk.value.trim(), risk: risk.value, min_deposit: dep.value.trim(), profit_share_pct: ps.value.trim(), fee_details: fd.value.trim() };
       var bad = null;
       if (v.display_name.length < 2) bad = ["bad_display_name", name];
       else if (v.strategy.length < 20) bad = ["bad_strategy", strat];
       else if (!/^https:\/\/[^\s/@]+\.[^\s/@]+(\/\S*)?$/i.test(v.brokeree_url)) bad = ["bad_brokeree_url", bk];
       else if (v.myfxbook_url && !/^https:\/\/www\.myfxbook\.com\/\S+$/i.test(v.myfxbook_url)) bad = ["bad_myfxbook_url", fx];
       else if (!RISK[v.risk]) bad = ["bad_risk", risk];
+      else if (v.profit_share_pct && !(/^\d{1,3}(\.\d{1,2})?%?$/.test(v.profit_share_pct) && parseFloat(v.profit_share_pct) <= 100)) bad = ["bad_profit_share", ps];
       if (bad) { msg.className = "bad"; msg.textContent = errText(bad[0]); bad[1].focus(); return; }
       send.disabled = true;
       msg.className = "muted"; msg.textContent = "กำลังส่ง…";
@@ -408,7 +498,7 @@
         it.appendChild(hd);
         var meta = el("div", "ea-my-meta");
         meta.appendChild(el("span", null, "ความเสี่ยง: " + (RISK[x.risk] || x.risk)));
-        meta.appendChild(el("span", null, "ขั้นต่ำ: " + (x.min_deposit || "—")));
+        meta.appendChild(el("span", null, "ลงทุนขั้นต่ำ: " + (x.min_deposit || "—") + " (ข้อมูลจาก Master)"));
         it.appendChild(meta);
         if (x.status === "approved") it.appendChild(link(x.brokeree_url, "ghost soc-small", "Copy ผ่าน Brokeree ↗"));
         card.appendChild(it);

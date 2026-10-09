@@ -347,6 +347,22 @@
 
     nav.drawer [data-page="social"] { --ico:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffd770' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='9' cy='8' r='3.2'/%3E%3Cpath d='M3 19.5c.6-3.3 3-5.2 6-5.2s5.4 1.9 6 5.2'/%3E%3Cpath d='M16 5.2a3 3 0 0 1 0 5.6M18 14.6c1.6.7 2.6 2.4 3 4.9'/%3E%3C/svg%3E"); --ico-on:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231c1405' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='9' cy='8' r='3.2'/%3E%3Cpath d='M3 19.5c.6-3.3 3-5.2 6-5.2s5.4 1.9 6 5.2'/%3E%3Cpath d='M16 5.2a3 3 0 0 1 0 5.6M18 14.6c1.6.7 2.6 2.4 3 4.9'/%3E%3C/svg%3E"); }
     /* ===== Social Trade ===== */
+    .soc-terms-mini { display:grid; grid-template-columns:1fr 1fr; gap:8px; width:100%; }
+    .soc-term { display:flex; flex-direction:column; gap:2px; padding:8px 10px; border-radius:12px; background:rgba(0,0,0,.3); border:1px solid var(--line); min-width:0; }
+    .soc-term-l { font-size:11.5px; color:var(--dim); }
+    .soc-term b { font:600 15px "Kanit",sans-serif; color:#fff3d0; word-break:break-word; }
+    .soc-src { display:inline-block; align-self:flex-start; white-space:nowrap; font-size:10.5px; padding:1px 8px; border-radius:999px; border:1px solid var(--line); color:var(--dim); }
+    .soc-src.bk { color:var(--ok); border-color:rgba(79,224,160,.35); background:rgba(79,224,160,.08); }
+    .soc-src.ms { color:#ffd770; border-color:var(--line2); background:rgba(212,165,64,.1); }
+    .soc-terms { margin-bottom:18px; }
+    .soc-trows { display:grid; gap:0; }
+    .soc-trow { display:grid; grid-template-columns:minmax(160px,240px) 1fr; gap:12px; padding:10px 0; border-bottom:1px solid rgba(212,165,64,.12); align-items:baseline; }
+    .soc-trow:last-child { border-bottom:0; }
+    .soc-tl { color:#cdbb92; font-size:13.5px; }
+    .soc-tv { display:flex; flex-wrap:wrap; gap:6px 10px; align-items:center; }
+    .soc-tv b { color:#fff3d0; font:600 16px "Kanit",sans-serif; word-break:break-word; }
+    .soc-tnote { font-size:12px; flex-basis:100%; }
+    .soc-tfoot { font-size:12px; margin:10px 0 0; }
     .soc-cta { display:flex; flex-wrap:wrap; align-items:center; gap:10px; }
     .soc-card .ea-card-head .ea-chip { align-self:flex-start; }
     .soc-clamp { display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; white-space:pre-wrap; }
@@ -380,6 +396,7 @@
       .soc-preview { flex-direction:column; }
       .soc-preview img { width:100%; max-height:160px; }
       .soc-frame { height:480px; }
+      .soc-trow { grid-template-columns:1fr; gap:4px; }
     }
     /* ===== EA Marketplace ===== */
     .mk-head { display:flex; align-items:flex-end; justify-content:space-between; gap:16px; margin-bottom:18px; }

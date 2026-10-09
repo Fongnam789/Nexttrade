@@ -8,7 +8,9 @@
  *   POST /api/social/apply   {profile}  Google: apply to become Master (→ pending; admin approves in /admin)
  *   POST /api/social/profile {profile}  Google + approved Master only: update own profile
  *   POST /api/social/follow  {id, follow}  Google: record / remove following of an approved Master
- * Profile fields: display_name, strategy, myfxbook_url (https://www.myfxbook.com/…), brokeree_url (https, any broker domain),
+ * Offer terms: masters/master responses include brokeree_terms read server-side from the Master's Brokeree link
+ *              (see _lib/brokeree.js; cached 6 h with fetched_at). Clients fall back to Master-entered fields.
+ * Profile fields: profit_share_pct (0–100, optional), fee_details (free text), display_name, strategy, myfxbook_url (https://www.myfxbook.com/…), brokeree_url (https, any broker domain),
  *                 risk (low|medium|high), min_deposit (free text). Brokeree is link-out only (no API integration).
  */
 const G = require("../_lib/google");
@@ -16,6 +18,14 @@ const L = require("../_lib/license");
 const S = require("../_lib/store");
 const M = require("../_lib/social");
 const P = require("../_lib/link-preview");
+const B = require("../_lib/brokeree");
+
+/** Public view + offer terms read from the Master's Brokeree link (cached, timestamped; null when not published). */
+async function withTerms(m) {
+  let bk = null;
+  try { bk = await B.cachedRead(m.brokeree_url); } catch (e) { bk = { ok: false, reason: "error" }; }
+  return Object.assign(M.publicView(m, await M.followerCount(m.id)), { brokeree_terms: bk });
+}
 
 function send(res, status, obj) {
   res.setHeader("Cache-Control", "no-store");
@@ -31,14 +41,15 @@ module.exports = async function handler(req, res) {
       if (req.method !== "GET") return send(res, 405, { error: "method_not_allowed" });
       const all = await M.listMasters();
       const out = [];
-      for (const m of all) if (m.status === "approved") out.push(M.publicView(m, await M.followerCount(m.id)));
+      const out2 = await Promise.all(all.filter((m) => m.status === "approved").map(withTerms));
+      out.push.apply(out, out2);
       return send(res, 200, { masters: out, durable: S.store().durable });
     }
     if (op === "master") {
       if (req.method !== "GET") return send(res, 405, { error: "method_not_allowed" });
       const m = await M.getMaster(req.query && req.query.id);
       if (!m || m.status !== "approved") return send(res, 404, { error: "not_found" });
-      return send(res, 200, { master: M.publicView(m, await M.followerCount(m.id)) });
+      return send(res, 200, { master: await withTerms(m) });
     }
 
     if (op === "preview") {

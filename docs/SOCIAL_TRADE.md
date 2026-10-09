@@ -13,10 +13,25 @@ Masters, and no invented statistics. With no approved Masters the page shows **"
 | Admin | `/admin` (username/password session) | `master_approve`, `master_reject` (note), `master_suspend`, `master_delete` |
 
 ## Master profile fields
-- `display_name` (2–40), `strategy` (20–2000), `risk` (`low|medium|high`), `min_deposit` (free text ≤ 60)
+- `display_name` (2–40), `strategy` (20–2000), `risk` (`low|medium|high`), `min_deposit` (เงินลงทุนขั้นต่ำ, free text ≤ 60)
+- `profit_share_pct` (optional, 0–100, ≤ 2 decimals), `fee_details` (optional, ≤ 300). Used only when Brokeree doesn't publish the value
 - `brokeree_url` (required): **ลิงก์ Brokeree Social Trading**, the Strategy/Provider link from the Master's broker Brokeree
   portal (https, any domain, since every broker hosts its own portal). Clients join via this link.
 - `myfxbook_url` (optional): must be `https://www.myfxbook.com/…`
+
+## Offer terms (Profit sharing, minimum investment)
+Read **server-side** from the Master's Brokeree link by `api/_lib/brokeree.js`, cached 6 h (failures 30 min), with `fetched_at`
+shown to clients as "อ่านจากลิงก์ Brokeree … เมื่อ <time>".
+- Supported link: `https://<broker portal>/portal/registration/subscription/<providerId>/<OfferName>` (the provider's offer link).
+- The portal is an Angular SPA, so the HTML has no terms. We read the same **public, unauthenticated** JSON the registration page loads
+  before login: `/api/brief/providers/<id>` and `/api/brief/providers/<id>/offers`.
+- Parsed fields (as published; null stays null): `performance.fee` (%) and `performance.interval` → Profit sharing,
+  `filters.minBalance` (+ offer currency, e.g. USC = US cents) → เงินลงทุนขั้นต่ำ, `managementFee`(+interval), `registrationFee`,
+  offer name, provider nickname. Checked on 3 broker portals (Oct 2026): fee + interval always present; minBalance often null.
+- Not available from these public endpoints: performance stats (returns, drawdown), follower counts, AUM.
+- Fallback per field: Master-entered `profit_share_pct` (0–100) / `min_deposit` (free text) / `fee_details`, labelled **ข้อมูลจาก Master**.
+  If neither exists, "—". Numbers are never invented.
+- Other link shapes (ratings widgets, broker landing pages) → `unsupported_link` → Master fields only.
 
 ## Brokeree / Myfxbook display
 - **No Brokeree API integration** (that needs broker credentials). Link-out only.

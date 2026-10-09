@@ -152,7 +152,7 @@
       tr.appendChild(el("td", null, m.created_at ? new Date(m.created_at).toLocaleString("th-TH") : "—"));
       tr.appendChild(el("td", null, m.email || "—"));
       var tdN = el("td"); tdN.appendChild(el("strong", null, m.display_name)); tdN.appendChild(el("div", "muted", (m.strategy || "").slice(0, 120))); tr.appendChild(tdN);
-      tr.appendChild(el("td", null, (RISK[m.risk] || m.risk) + " · " + (m.min_deposit || "—")));
+      tr.appendChild(el("td", null, (RISK[m.risk] || m.risk) + " · " + (m.min_deposit || "—") + (m.profit_share_pct != null ? " · PS " + m.profit_share_pct + "%" : "")));
       tr.appendChild(linkCell(m.brokeree_url));
       tr.appendChild(linkCell(m.myfxbook_url));
       tr.appendChild(el("td", null, String(m.followers || 0)));
