@@ -17,6 +17,7 @@
     pay: "pay",
     aff: "go",
     market: "app",
+    social: "app",
   };
 
   /* Visible labels only — do NOT show subdomain prefixes on menu */
@@ -31,6 +32,7 @@
     tree: "ผังสมาชิก",
     keys: "API Keys",
     market: "ตลาด EA",
+    social: "Social Trade",
   };
 
   function hosts() {

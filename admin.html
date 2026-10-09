@@ -41,6 +41,7 @@
     .st.pending_payment { color:#bfae88; border-color:rgba(168,152,122,.4); }
     .st.pending_approval { color:var(--gold2); border-color:var(--line2); }
     .st.active { color:var(--ok); border-color:rgba(79,224,160,.4); }
+    td a { color:#ffd770; word-break:break-all; }
     .st.revoked { color:var(--bad); border-color:rgba(255,120,130,.45); }
     .row { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; align-items:end; }
     .scroll { overflow:auto; }
@@ -68,6 +69,12 @@
 
     <section id="appView" hidden>
       <div id="storeWarn"></div>
+      <div class="card">
+        <h2>Social Trade — Master</h2>
+        <p class="muted">ผู้สมัคร Master จากระบบ NEXTTRADE เท่านั้น · อนุมัติแล้วจึงแสดงในหน้า Social Trade · ลิงก์ Brokeree/Myfxbook เป็นของ Master เอง (ตรวจก่อนอนุมัติ)</p>
+        <div class="scroll"><table id="mTable"><tr><td class="muted">กำลังโหลด…</td></tr></table></div>
+        <p id="mMsg" class="muted"></p>
+      </div>
       <div class="card">
         <h2>คำขอใช้ EA / ไลเซนส์</h2>
         <p class="muted">ยืนยันการชำระ → อนุมัติ → ไลเซนส์ใช้งานได้ (EA เช็คผ่าน /api/license/verify) · เพิกถอนได้ทุกเมื่อ</p>
@@ -114,6 +121,52 @@
       load();
     });
   }
+  var MST = { pending: "รออนุมัติ", approved: "อนุมัติแล้ว", rejected: "ไม่อนุมัติ", suspended: "ระงับ" };
+  var RISK = { low: "ต่ำ", medium: "กลาง", high: "สูง" };
+  function mAct(action, id, btn, extra) {
+    btn.disabled = true;
+    api("action", "POST", Object.assign({ action: action, id: id }, extra || {})).then(function (j) {
+      $("mMsg").className = j._status === 200 ? "ok" : "bad";
+      $("mMsg").textContent = j._status === 200 ? "อัปเดตแล้ว" : "ไม่สำเร็จ (" + j.error + ")";
+      if (j._status === 401) return show(false);
+      load();
+    });
+  }
+  function linkCell(url) {
+    var td = el("td");
+    if (!url) { td.textContent = "—"; return td; }
+    var a = el("a", null, url.replace(/^https:\/\//, "").slice(0, 40));
+    a.href = url; a.target = "_blank"; a.rel = "noopener noreferrer";
+    td.appendChild(a);
+    return td;
+  }
+  function renderMasters(list) {
+    var t = $("mTable");
+    t.innerHTML = "";
+    var hr = el("tr");
+    ["สมัครเมื่อ", "Google", "ชื่อ Master", "ความเสี่ยง / ขั้นต่ำ", "Brokeree", "Myfxbook", "ผู้ติดตาม", "สถานะ", "จัดการ"].forEach(function (h) { hr.appendChild(el("th", null, h)); });
+    t.appendChild(hr);
+    if (!list.length) { var tr0 = el("tr"); var td0 = el("td", "muted", "ยังไม่มีผู้สมัคร Master"); td0.colSpan = 9; tr0.appendChild(td0); t.appendChild(tr0); return; }
+    list.forEach(function (m) {
+      var tr = el("tr");
+      tr.appendChild(el("td", null, m.created_at ? new Date(m.created_at).toLocaleString("th-TH") : "—"));
+      tr.appendChild(el("td", null, m.email || "—"));
+      var tdN = el("td"); tdN.appendChild(el("strong", null, m.display_name)); tdN.appendChild(el("div", "muted", (m.strategy || "").slice(0, 120))); tr.appendChild(tdN);
+      tr.appendChild(el("td", null, (RISK[m.risk] || m.risk) + " · " + (m.min_deposit || "—")));
+      tr.appendChild(linkCell(m.brokeree_url));
+      tr.appendChild(linkCell(m.myfxbook_url));
+      tr.appendChild(el("td", null, String(m.followers || 0)));
+      var tdS = el("td"); tdS.appendChild(el("span", "st " + (m.status === "approved" ? "active" : m.status === "pending" ? "pending_approval" : "revoked"), MST[m.status] || m.status)); tr.appendChild(tdS);
+      var tdA = el("td");
+      var b1 = el("button", "gold", "อนุมัติ"); b1.type = "button"; b1.disabled = m.status === "approved"; b1.onclick = function () { mAct("master_approve", m.id, b1); };
+      var b2 = el("button", null, "ไม่อนุมัติ"); b2.type = "button"; b2.disabled = m.status !== "pending"; b2.onclick = function () { var note = prompt("เหตุผล (ผู้สมัครจะเห็น)", "") ; if (note === null) return; mAct("master_reject", m.id, b2, { note: note }); };
+      var b3 = el("button", "red", "ระงับ"); b3.type = "button"; b3.disabled = m.status === "suspended"; b3.onclick = function () { mAct("master_suspend", m.id, b3); };
+      var b4 = el("button", "red", "ลบ"); b4.type = "button"; b4.onclick = function () { if (confirm("ลบ Master นี้ถาวร?")) mAct("master_delete", m.id, b4); };
+      [b1, b2, b3, b4].forEach(function (b) { tdA.appendChild(b); });
+      tr.appendChild(tdA);
+      t.appendChild(tr);
+    });
+  }
   function load() {
     api("data").then(function (j) {
       if (j._status === 401) return show(false);
@@ -145,6 +198,7 @@
         tr.appendChild(tdA);
         t.appendChild(tr);
       });
+      renderMasters(j.masters || []);
       var c = j.caps || {};
       $("capSoft").value = c.soft || "";
       $("capHard").value = c.hard || "";

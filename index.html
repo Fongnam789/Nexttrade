@@ -345,6 +345,40 @@
 
     nav.drawer [data-page="market"] { --ico:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffd770' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 9l1.5-5h13L20 9'/%3E%3Cpath d='M4 9h16v2a3 3 0 0 1-5.3 1.9A3 3 0 0 1 12 14a3 3 0 0 1-2.7-1.1A3 3 0 0 1 4 11z'/%3E%3Cpath d='M5 13.5V20h14v-6.5M10 20v-4h4v4'/%3E%3C/svg%3E"); --ico-on:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231c1405' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 9l1.5-5h13L20 9'/%3E%3Cpath d='M4 9h16v2a3 3 0 0 1-5.3 1.9A3 3 0 0 1 12 14a3 3 0 0 1-2.7-1.1A3 3 0 0 1 4 11z'/%3E%3Cpath d='M5 13.5V20h14v-6.5M10 20v-4h4v4'/%3E%3C/svg%3E"); }
 
+    nav.drawer [data-page="social"] { --ico:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffd770' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='9' cy='8' r='3.2'/%3E%3Cpath d='M3 19.5c.6-3.3 3-5.2 6-5.2s5.4 1.9 6 5.2'/%3E%3Cpath d='M16 5.2a3 3 0 0 1 0 5.6M18 14.6c1.6.7 2.6 2.4 3 4.9'/%3E%3C/svg%3E"); --ico-on:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231c1405' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='9' cy='8' r='3.2'/%3E%3Cpath d='M3 19.5c.6-3.3 3-5.2 6-5.2s5.4 1.9 6 5.2'/%3E%3Cpath d='M16 5.2a3 3 0 0 1 0 5.6M18 14.6c1.6.7 2.6 2.4 3 4.9'/%3E%3C/svg%3E"); }
+    /* ===== Social Trade ===== */
+    .soc-cta { display:flex; flex-wrap:wrap; align-items:center; gap:10px; }
+    .soc-card .ea-card-head .ea-chip { align-self:flex-start; }
+    .soc-clamp { display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; white-space:pre-wrap; }
+    .soc-risk-low { color:var(--ok); border-color:rgba(79,224,160,.35); background:rgba(79,224,160,.08); }
+    .soc-risk-medium { color:#ffd770; }
+    .soc-risk-high { color:#ff9da2; border-color:rgba(255,120,130,.4); background:rgba(255,120,130,.08); }
+    .soc-own { margin:12px 0 0; font-size:12.5px; }
+    .soc-actions { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-top:14px; }
+    .soc-actions .btn { padding:11px 22px; font-size:15px; text-decoration:none; }
+    .soc-note { flex-basis:100%; font-size:12.5px; }
+    .soc-following { border-color:var(--gold2) !important; color:#fff3d0 !important; }
+    .soc-msg { margin:8px 0 0; min-height:1em; }
+    .soc-pre { white-space:pre-wrap; word-break:break-word; color:#e6d9b8; }
+    .soc-btn { display:inline-block; text-decoration:none; margin-top:6px; }
+    .soc-url { font-size:12px; word-break:break-all; margin-top:8px; }
+    .soc-grid2 { align-items:start; margin-bottom:18px; }
+    .soc-preview { display:flex; gap:14px; align-items:flex-start; padding:12px; border-radius:14px; background:rgba(0,0,0,.28); border:1px solid var(--line); margin-bottom:12px; }
+    .soc-preview img { width:140px; max-height:90px; object-fit:cover; border-radius:10px; flex:none; }
+    .soc-preview strong { display:block; color:#fff3d0; }
+    .soc-preview p { margin:4px 0 0; font-size:13px; }
+    .soc-site { display:block; font-size:12px; }
+    .soc-frame { width:100%; height:620px; border:1px solid var(--line); border-radius:14px; background:#0b0904; margin:6px 0; }
+    .soc-hint { display:block; font-size:12px; margin-top:4px; font-weight:400; }
+    .soc-form-grid { margin-top:12px; }
+    .soc-small { display:inline-block; margin-top:6px; padding:6px 12px; font-size:13px; text-decoration:none; }
+    #socialCard h3 { margin:14px 0 4px; font-size:15px; color:#e6d3a3; }
+    @media (max-width:600px) {
+      .soc-actions .btn { width:100%; text-align:center; }
+      .soc-preview { flex-direction:column; }
+      .soc-preview img { width:100%; max-height:160px; }
+      .soc-frame { height:480px; }
+    }
     /* ===== EA Marketplace ===== */
     .mk-head { display:flex; align-items:flex-end; justify-content:space-between; gap:16px; margin-bottom:18px; }
     .mk-head h1 { margin:0 0 4px; }
@@ -533,6 +567,7 @@
     <button data-page="tree" type="button">ผังสมาชิก</button>
     <button data-page="keys" type="button">API Keys</button>
     <button data-page="market" type="button">ตลาด EA</button>
+    <button data-page="social" type="button">Social Trade</button>
   </nav>
 
   <main>
@@ -565,6 +600,7 @@
       </div>
       <div class="card profile-extra" id="myEaCard"><h2>EA ของฉัน</h2><p class="muted">กำลังโหลด…</p></div>
       <div class="card profile-extra" id="aiUsageCard"><h2>การใช้ AI / API token</h2></div>
+      <div class="card profile-extra" id="socialCard"><h2>Social Trade</h2></div>
     </section>
 
     <section class="page" id="home">
@@ -891,6 +927,27 @@ SETUP: FVG + OB sweep"></textarea>
         <div id="mkDetailBody" style="margin-top:14px"></div>
       </div>
     </section>
+    <section class="page" id="social">
+      <div id="socList">
+        <div class="mk-head">
+          <div>
+            <h1>Social Trade</h1>
+            <p class="muted">Master Trader ของ NEXTTRADE (สมาชิกที่ผ่านการอนุมัติ) · ดูกลยุทธ์ ผลงาน Myfxbook และ Copy ผ่าน Brokeree ของโบรกเกอร์</p>
+          </div>
+          <div class="soc-cta" id="socCta"></div>
+        </div>
+        <div class="ea-grid" id="socGrid"></div>
+        <p class="muted" style="margin-top:14px">แสดงเฉพาะ Master ที่สมัครในระบบ NEXTTRADE และผ่านการอนุมัติ · สถิติดูได้จากลิงก์ Myfxbook/Brokeree ของ Master เอง · การ Copy เทรดมีความเสี่ยง</p>
+      </div>
+      <div id="socDetail" hidden>
+        <button class="ghost" id="socBack" type="button">← กลับไป Social Trade</button>
+        <div id="socDetailBody" style="margin-top:14px"></div>
+      </div>
+      <div id="socMe" hidden>
+        <button class="ghost" id="socMeBack" type="button">← กลับไป Social Trade</button>
+        <div id="socMeBody" style="margin-top:14px;max-width:820px"></div>
+      </div>
+    </section>
   </main>
   <footer>ลูกค้า: Google login · เมนูแฮมเบอร์เกอร์ · Admin คนละโฮสต์ (ไม่ขึ้นเมนู) · ดู docs/CUSTOMER_HOSTS.md</footer>
 <script src="./config.js"></script>
@@ -906,6 +963,7 @@ SETUP: FVG + OB sweep"></textarea>
 <script src="./control-layer.js"></script>
 <script src="./ea-marketplace.js"></script>
 <script src="./ai-usage.js"></script>
+<script src="./social.js"></script>
 <script>
 /* Nav + Google primary handled by site-menu.js / auth-ui.js */
 function go(name) {

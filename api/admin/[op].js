@@ -8,6 +8,7 @@
  *        action: confirm_payment | approve | revoke | unrevoke | set_caps
  *                | issue  {ea, account, server, test?}  → admin-issued license (signed server-side, st=pending_payment)
  *                | delete {id}                          → remove a license record (e.g. test records)
+ *                | master_approve | master_reject {note?} | master_suspend | master_delete  {id: m_…}  → Social Trade Masters
  * Mutating calls need header X-NT-Admin: 1 (with SameSite=Strict cookie → CSRF protection). No CORS headers on purpose.
  */
 const A = require("../_lib/admin-auth");
@@ -17,6 +18,7 @@ const S = require("../_lib/store");
 const L = require("../_lib/license");
 const crypto = require("crypto");
 const catalog = require("../../ea_catalog.json");
+const M = require("../_lib/social");
 
 function send(res, status, obj) {
   res.setHeader("Cache-Control", "no-store");
@@ -67,6 +69,7 @@ module.exports = async function handler(req, res) {
       return send(res, 200, {
         requests: list.map((r) => Object.assign(R.publicView(r), { email: r.email || "" })),
         caps: await C.caps(),
+        masters: await Promise.all((await M.listMasters()).map(async (m) => Object.assign(M.ownerView(m), { email: m.email || "", followers: await M.followerCount(m.id) }))),
         store: st.kind,
         durable: st.durable,
       });
@@ -98,6 +101,17 @@ module.exports = async function handler(req, res) {
           created_at: Date.now(), license_expires_at: new Date(payload.exp * 1000).toISOString(),
         });
         return send(res, 200, { request: R.publicView(rec0), key: key });
+      }
+      if (a.indexOf("master_") === 0) {
+        const m = await M.getMaster(body.id);
+        if (!m) return send(res, 404, { error: "not_found" });
+        if (a === "master_delete") { await M.removeMaster(m); return send(res, 200, { ok: true }); }
+        if (a === "master_approve") Object.assign(m, { status: "approved", approved_at: m.approved_at || Date.now(), reject_note: "" });
+        else if (a === "master_reject") Object.assign(m, { status: "rejected", reject_note: String(body.note || "").slice(0, 200) });
+        else if (a === "master_suspend") Object.assign(m, { status: "suspended" });
+        else return send(res, 400, { error: "unknown_action" });
+        await M.saveMaster(m);
+        return send(res, 200, { master: Object.assign(M.ownerView(m), { email: m.email || "" }) });
       }
       if (a === "delete") {
         const ok = await R.remove(body.id);
