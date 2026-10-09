@@ -343,6 +343,83 @@
     #sigEa { padding-right:36px !important; }
     #homeChartTitle, #aiChartTitle { font-size:22px; }
 
+    nav.drawer [data-page="market"] { --ico:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffd770' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 9l1.5-5h13L20 9'/%3E%3Cpath d='M4 9h16v2a3 3 0 0 1-5.3 1.9A3 3 0 0 1 12 14a3 3 0 0 1-2.7-1.1A3 3 0 0 1 4 11z'/%3E%3Cpath d='M5 13.5V20h14v-6.5M10 20v-4h4v4'/%3E%3C/svg%3E"); --ico-on:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231c1405' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 9l1.5-5h13L20 9'/%3E%3Cpath d='M4 9h16v2a3 3 0 0 1-5.3 1.9A3 3 0 0 1 12 14a3 3 0 0 1-2.7-1.1A3 3 0 0 1 4 11z'/%3E%3Cpath d='M5 13.5V20h14v-6.5M10 20v-4h4v4'/%3E%3C/svg%3E"); }
+
+    /* ===== EA Marketplace ===== */
+    .mk-head { display:flex; align-items:flex-end; justify-content:space-between; gap:16px; margin-bottom:18px; }
+    .mk-head h1 { margin:0 0 4px; }
+    .ea-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(270px,1fr)); gap:18px; }
+    button.ea-card { text-align:left; font:inherit; color:inherit; cursor:pointer; display:flex; flex-direction:column; gap:10px; align-items:flex-start; transition:transform .18s, border-color .2s, box-shadow .2s; }
+    button.ea-card:hover { transform:translateY(-3px); border-color:var(--gold2); box-shadow:var(--shadow),0 0 34px rgba(212,165,64,.16); }
+    .ea-card-top { display:flex; align-items:center; gap:14px; width:100%; }
+    .ea-card-head { min-width:0; display:flex; flex-direction:column; gap:4px; }
+    .ea-badge { flex:none; width:48px; height:48px; border-radius:14px; display:flex; align-items:center; justify-content:center; font:700 17px "Kanit",sans-serif; color:#1c1405; letter-spacing:.04em;
+      background:linear-gradient(145deg,#fff0b5,#d9a943 45%,#8e6419); box-shadow:0 6px 16px rgba(212,165,64,.32),inset 0 1px 0 #fff6d5; }
+    .ea-badge.lg { width:64px; height:64px; border-radius:18px; font-size:22px; }
+    .ea-name { font:600 16.5px/1.3 "Kanit",sans-serif; color:#fff3d0; word-break:break-word; }
+    .ea-ver { display:inline-block; align-self:flex-start; font:500 11.5px "Kanit",sans-serif; color:#1c1405; background:var(--btn); border-radius:999px; padding:1px 10px; }
+    .ea-tagline { color:#d6c8a6; font-size:13.5px; margin:0; flex:1; }
+    .ea-meta { display:flex; flex-wrap:wrap; gap:8px; align-items:center; width:100%; }
+    .ea-stars { color:var(--gold2); font-size:13px; letter-spacing:.06em; }
+    .ea-stars.lg { font-size:22px; }
+    .ea-chip { display:inline-flex; align-items:center; gap:6px; font-size:12px; padding:3px 10px; border-radius:999px; background:rgba(212,165,64,.1); border:1px solid var(--line2); color:#f0dca8; }
+    .ea-chip.dim { color:var(--dim); border-color:var(--line); background:rgba(0,0,0,.25); }
+    .ea-chip.ok { color:var(--ok); border-color:rgba(79,224,160,.35); background:rgba(79,224,160,.08); }
+    .ea-chips { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:6px; }
+    .ea-more { font:500 13px "Kanit",sans-serif; color:var(--gold2); }
+    .ea-hero { margin-bottom:18px; }
+    .ea-title { font-size:30px; margin:0 0 6px; }
+    .ea-sub { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+    .ea-hero .ea-tagline { margin:14px 0 4px; font-size:15px; }
+    .ea-tabs { display:flex; gap:6px; flex-wrap:wrap; margin-top:16px; padding:5px; border-radius:14px; background:rgba(0,0,0,.35); border:1px solid var(--line); width:fit-content; max-width:100%; }
+    .ea-tab { font:500 14px "Kanit",sans-serif; background:transparent; color:#cdbb92; border:0; border-radius:10px; padding:8px 16px; cursor:pointer; transition:all .18s; }
+    .ea-tab:hover { color:#fff3d0; background:rgba(212,165,64,.08); }
+    .ea-tab.on { background:var(--btn); color:#1c1405; font-weight:600; box-shadow:0 3px 12px rgba(212,165,64,.3); }
+    .ea-pane > .grid > .grid { align-content:start; }
+    .ea-list { list-style:none; padding:0; margin:0; counter-reset:step; }
+    .ea-list li { position:relative; padding:8px 0 8px 40px; border-bottom:1px solid rgba(212,165,64,.1); color:#e6d9b8; }
+    .ea-list li:last-child { border-bottom:0; }
+    .ea-list li::before { counter-increment:step; content:counter(step); position:absolute; left:0; top:8px; width:26px; height:26px; border-radius:8px; background:rgba(212,165,64,.12); border:1px solid var(--line2); color:var(--gold2); font:600 12px/24px "Kanit",sans-serif; text-align:center; }
+    .ea-list.bullets li { padding-left:26px; }
+    .ea-list.bullets li::before { content:""; counter-increment:none; width:9px; height:9px; top:15px; left:4px; border-radius:0; border:0; transform:rotate(45deg); background:linear-gradient(135deg,#fff0b5,#c9962f); }
+    .ea-pane > .grid { align-items:start; }
+    .ea-h3-gap { margin-top:16px !important; }
+    .ea-foot { margin-top:10px; font-size:12.5px; }
+    .ea-empty { text-align:center; padding:36px 24px; }
+    .ea-empty h2 { justify-content:center; }
+    .ea-empty h2::before { display:none; }
+    .ea-empty .muted { max-width:560px; margin:0 auto; }
+    .ea-empty-ico { font-size:38px; margin-bottom:6px; filter:grayscale(.2) drop-shadow(0 4px 12px rgba(212,165,64,.3)); }
+    .ea-sample-wrap { margin-top:16px; }
+    .ea-sample-wrap > summary { cursor:pointer; list-style:none; display:inline-flex; align-items:center; gap:8px; padding:9px 16px; border-radius:12px; border:1px dashed var(--line2); color:#e6d3a3; font:500 13.5px "Kanit",sans-serif; background:rgba(212,165,64,.05); }
+    .ea-sample-wrap > summary::-webkit-details-marker { display:none; }
+    .ea-sample-wrap > summary::before { content:"▸"; color:var(--gold2); transition:transform .18s; }
+    .ea-sample-wrap[open] > summary::before { transform:rotate(90deg); }
+    .ea-sample-wrap > .card { margin-top:14px; }
+    .ea-sample { border-style:dashed; }
+    .ea-sample-banner { font-weight:600; }
+    .ea-chart { min-height:240px; border-radius:14px; background:rgba(0,0,0,.35); border:1px solid var(--line); padding:8px; display:flex; align-items:center; justify-content:center; }
+    .ea-equity { width:100%; height:260px; display:block; }
+    .ea-rev-sum { display:flex; align-items:center; gap:16px; padding:6px 0 14px; border-bottom:1px solid var(--line); margin-bottom:6px; }
+    .ea-rev-avg { font:700 46px/1 "Kanit",sans-serif; background:var(--mg); -webkit-background-clip:text; background-clip:text; color:transparent; }
+    .ea-rev { padding:12px 0; border-bottom:1px solid rgba(212,165,64,.12); }
+    .ea-rev:last-child { border-bottom:0; }
+    .ea-rev-hd { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:4px; color:#fff3d0; }
+    .ea-rev p { margin:2px 0 4px; white-space:pre-wrap; word-break:break-word; }
+    .ea-rev-date { font-size:12px; }
+    .ea-hint { margin-top:6px; font-size:12.5px; }
+    .ea-star-input { display:flex; gap:4px; margin-top:6px; }
+    .ea-star-btn { font-size:28px; line-height:1; background:transparent; border:0; color:rgba(212,165,64,.3); cursor:pointer; padding:2px 3px; transition:color .15s, transform .15s; }
+    .ea-star-btn:hover { transform:scale(1.12); color:rgba(255,215,112,.7); }
+    .ea-star-btn.on { color:var(--gold2); text-shadow:0 0 12px rgba(255,215,112,.5); }
+    @media (max-width:600px) {
+      .ea-title { font-size:24px; }
+      .ea-tabs { width:100%; }
+      .ea-tab { flex:1 1 auto; padding:8px 10px; font-size:13px; }
+      .ea-equity { height:200px; }
+      .ea-chart { min-height:200px; }
+    }
+
     /* scrollbars */
     * { scrollbar-width:thin; scrollbar-color:rgba(212,165,64,.4) transparent; }
     ::-webkit-scrollbar { width:8px; height:8px; } ::-webkit-scrollbar-thumb { background:rgba(212,165,64,.35); border-radius:8px; } ::-webkit-scrollbar-track { background:transparent; }
@@ -407,6 +484,7 @@
     <button data-page="aff" type="button">Affiliate</button>
     <button data-page="tree" type="button">ผังสมาชิก</button>
     <button data-page="keys" type="button">API Keys</button>
+    <button data-page="market" type="button">ตลาด EA</button>
   </nav>
 
   <main>
@@ -747,6 +825,22 @@ SETUP: FVG + OB sweep"></textarea>
       </div>
       </div>
     </section>
+    <section class="page" id="market">
+      <div id="mkList">
+        <div class="mk-head">
+          <div>
+            <h1>ตลาด EA</h1>
+            <p class="muted">เลือกดู EA ทีละตัว · การทำงาน · ผล Backtest · รีวิวจากผู้ใช้</p>
+          </div>
+        </div>
+        <div class="ea-grid" id="mkGrid"><p class="muted">กำลังโหลดแคตตาล็อก EA…</p></div>
+        <p class="muted" style="margin-top:14px">ข้อมูล EA สรุปจากซอร์สและค่าเริ่มต้นของ EA · ผล Backtest แสดงเฉพาะผลทดสอบจริงเมื่อมีข้อมูล</p>
+      </div>
+      <div id="mkDetail" hidden>
+        <button class="ghost" id="mkBack" type="button">← กลับไปตลาด EA</button>
+        <div id="mkDetailBody" style="margin-top:14px"></div>
+      </div>
+    </section>
   </main>
   <footer>ลูกค้า: Google login · เมนูแฮมเบอร์เกอร์ · Admin คนละโฮสต์ (ไม่ขึ้นเมนู) · ดู docs/CUSTOMER_HOSTS.md</footer>
 <script src="./config.js"></script>
@@ -760,6 +854,7 @@ SETUP: FVG + OB sweep"></textarea>
 <script src="./catalog-ui.js"></script>
 <script src="./ai-chat.js"></script>
 <script src="./control-layer.js"></script>
+<script src="./ea-marketplace.js"></script>
 <script>
 /* Nav + Google primary handled by site-menu.js / auth-ui.js */
 function go(name) {

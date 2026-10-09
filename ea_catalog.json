@@ -1,0 +1,242 @@
+{
+  "version": "1.0.0",
+  "updated": "2026-10-09",
+  "notes": [
+    "ข้อมูล EA ในไฟล์นี้สรุปจากคอมเมนต์และค่า input เริ่มต้นในซอร์ส .mq5 (repo training-ai-for-develop-ea) เท่านั้น",
+    "backtest = null แปลว่ายังไม่มีผลจริง หน้าเว็บจะแสดง 'ยังไม่มีผล backtest'",
+    "ใส่ผลจริงได้โดยแทน backtest ด้วย object ตาม backtest_schema ด้านล่าง (ตัวเลขจากรายงาน MT5 Strategy Tester) หรือชี้ equity_csv ไปที่ไฟล์ CSV",
+    "รีวิวไม่ได้เก็บในไฟล์นี้ — เก็บใน localStorage ของเบราว์เซอร์แยกตาม EA (key: nt_ea_reviews_<slug>) จนกว่าจะมี backend"
+  ],
+  "backtest_schema": {
+    "is_real": "true เมื่อเป็นผลจากรายงาน MT5 จริงเท่านั้น",
+    "source": "เช่น 'MT5 Strategy Tester report ReportTester-123.html'",
+    "symbol": "XAUUSD",
+    "timeframe": "M15",
+    "period": "2024-01-01 – 2025-12-31",
+    "model": "Every tick based on real ticks",
+    "initial_deposit": 1000,
+    "currency": "USD",
+    "net_profit": 0,
+    "max_drawdown_pct": 0,
+    "profit_factor": 0,
+    "win_rate_pct": 0,
+    "total_trades": 0,
+    "equity": "[array ของยอด equity ตามลำดับเวลา] หรือเว้นว่างแล้วใช้ equity_csv",
+    "equity_csv": "path ของ CSV (คอลัมน์ time,equity หรือ <DATE>,<BALANCE>,<EQUITY> จาก MT5) เช่น backtests/keylevel.csv"
+  },
+  "sample_backtest": {
+    "is_real": false,
+    "label": "ตัวอย่างข้อมูล (ยังไม่ใช่ผลจริง)",
+    "source": "ตัวเลขสมมุติสำหรับแสดงหน้าตาเท่านั้น ไม่ได้มาจาก EA ตัวใด",
+    "symbol": "XAUUSD",
+    "timeframe": "M15",
+    "period": "ตัวอย่าง 12 เดือน",
+    "model": "—",
+    "initial_deposit": 1000,
+    "currency": "USD",
+    "net_profit": 240,
+    "max_drawdown_pct": 9.5,
+    "profit_factor": 1.35,
+    "win_rate_pct": 52,
+    "total_trades": 180,
+    "equity": [1000,1012,1006,1025,1041,1030,1052,1068,1059,1047,1063,1088,1102,1094,1081,1096,1115,1131,1124,1140,1158,1149,1170,1186,1178,1195,1212,1204,1223,1240]
+  },
+  "eas": [
+    {
+      "slug": "keylevel-oneshot",
+      "name": "KeyLevel_OneShot_EA",
+      "version": "V1.11",
+      "source_file": "KeyLevel_OneShot_EA_V1_11_Standalone.mq5",
+      "style": "Key Level / Zone",
+      "tagline": "เข้าเทรดครั้งเดียวต่อระดับราคาสำคัญ คัดด้วยคะแนนหลายไทม์เฟรม",
+      "overview": "สแกนหาระดับราคาสำคัญ (High/Low วันก่อน สัปดาห์ก่อน ราคาเปิดวัน/สัปดาห์ Swing และเลขกลม) แล้วสร้างโซนรอบระดับด้วย ATR ให้คะแนนแต่ละระดับจากความสอดคล้องหลายไทม์เฟรมและความใหม่ของระดับ เข้าเทรดเมื่อคะแนนผ่านเกณฑ์ และใช้แต่ละระดับได้ครั้งเดียว (One Shot) จนกว่าจะรีเซ็ต",
+      "how_it_works": [
+        "หา Key Level จาก PDH/PDL, PWH/PWL, Daily/Weekly Open, Swing (H1) และเลขกลม",
+        "สร้างโซนรอบระดับด้วย ATR × 0.28 + บัฟเฟอร์",
+        "ให้คะแนนด้วย Multi-Timeframe Confluence และความใหม่ของระดับ (ขั้นต่ำ 62 คะแนน)",
+        "โหมดเข้าแบบอัตโนมัติ รวมถึง Breakout + Retest",
+        "ระดับที่ใช้แล้วจะรีเซ็ตเมื่อราคาห่างเกิน ATR × 2.5 หรือครบ 48 ชั่วโมง"
+      ],
+      "timeframes": ["H1 (สแกนระดับ)", "ชาร์ตที่ติด EA (เข้าออเดอร์)"],
+      "symbols": ["ชาร์ตที่ติด EA", "ค่าเลขกลมเริ่มต้นตั้งตาม XAUUSD"],
+      "risk_notes": [
+        "ค่าเริ่มต้นเสี่ยง 0.5% ต่อไม้ (ปิดได้ เปลี่ยนเป็น lot คงที่)",
+        "SL = ATR × 1.15, TP = 2R",
+        "เปิดพร้อมกันสูงสุด 3 ออเดอร์ คูลดาวน์ 20 นาที"
+      ],
+      "backtest": null
+    },
+    {
+      "slug": "meanreversion-adaptive-hybrid",
+      "name": "MeanReversionAdaptiveHybrid",
+      "version": "v1.02",
+      "source_file": "MeanReversionAdaptiveHybrid_v1_02_Standalone.mq5",
+      "style": "Mean Reversion",
+      "tagline": "เทรดกลับสู่ค่าเฉลี่ยเมื่อตลาดอยู่ในช่วงไซด์เวย์",
+      "overview": "ประเมินสภาพตลาดก่อน (Regime Engine ด้วย ADX, EMA 20/50 และการขยายตัวของ ATR) แล้วหาจังหวะที่ราคาเบี่ยงออกจาก Bollinger Band มากผิดปกติเพื่อเทรดกลับเข้าหาค่าเฉลี่ย ค่าเริ่มต้นเป็นโหมดส่งสัญญาณอย่างเดียว (SIGNAL_ONLY) แจ้งผ่าน Telegram ได้",
+      "how_it_works": [
+        "Regime Engine: ADX ต่ำกว่า 22 = ไซด์เวย์, สูงกว่า 30 = เทรนด์, ตรวจ ATR ขยายตัว",
+        "หาจุดเบี่ยงจาก Bollinger (20, 2.0) ระดับ 2.0σ / 2.5σ",
+        "ให้คะแนนสัญญาณ (สัญญาณ ≥ 70, เข้าเทรด ≥ 85, ความมั่นใจ Regime ≥ 60)",
+        "ปิดบางส่วนที่ TP1 = 1R และ TP2 = 1.8R",
+        "แจ้งเตือน Telegram และแดชบอร์ดบนชาร์ต"
+      ],
+      "timeframes": ["M5 (ค่าเริ่มต้น)"],
+      "symbols": ["ชาร์ตที่ติด EA (หรือกำหนดสัญลักษณ์เอง)"],
+      "risk_notes": [
+        "ค่าเริ่มต้นเป็นโหมดสัญญาณอย่างเดียว ต้องเปลี่ยนโหมดเองถึงจะเปิดออเดอร์",
+        "เสี่ยง 0.5% ต่อไม้, SL = ATR × 1.2",
+        "กลยุทธ์สวนเทรนด์ อาจเสียต่อเนื่องเมื่อตลาดเปลี่ยนเป็นเทรนด์แรง"
+      ],
+      "backtest": null
+    },
+    {
+      "slug": "news-01-breakout",
+      "name": "NEWS-01 News Breakout",
+      "version": "V1.21",
+      "source_file": "NEWS-01_News_Breakout_V1_21_Standalone.mq5",
+      "style": "News Breakout",
+      "tagline": "เทรด Breakout/Retest ของกรอบราคาก่อนข่าวแรง (NFP, CPI, FOMC, PCE)",
+      "overview": "ผู้ใช้ตั้งเวลาข่าวและตัวเลข Actual/Forecast/Previous EA จะวัดกรอบราคาก่อนข่าว ล็อกไม่เทรดช่วงข่าวออก แล้วรอการทะลุกรอบพร้อมการขยายตัวของ ATR และ Retest บน M1 ก่อนเข้าเทรด",
+      "how_it_works": [
+        "ตั้งเวลาข่าวและโปรไฟล์ข่าว (NFP/CPI/FOMC/PCE/OTHER)",
+        "วัดกรอบราคา 15 นาทีก่อนข่าว ล็อก 5 นาทีช่วงข่าว และเปิดหน้าต่างเทรด 30 นาทีหลังข่าว",
+        "ยืนยัน Breakout ด้วยเนื้อเทียน ≥ 55%, ATR ขยาย ≥ 1.2 เท่า และวอลุ่ม",
+        "รอ Retest (ภายใน 10 แท่ง) และคะแนน ≥ 70",
+        "เลื่อน SL ไปจุดคุ้มทุนเมื่อได้ 1R"
+      ],
+      "timeframes": ["M1 (สัญญาณ)"],
+      "symbols": ["ชาร์ตที่ติด EA"],
+      "risk_notes": [
+        "ต้องกรอกเวลาข่าวเอง ถ้าไม่กรอกจะไม่เทรด (ค่าเริ่มต้น)",
+        "เสี่ยง 0.5% ต่อไม้, RR 2, สูงสุด 1 ไม้ต่อรอบข่าว",
+        "หยุดเมื่อขาดทุนรายวันถึง 2% · สเปรดช่วงข่าวกว้าง จำกัดที่ 80 จุด"
+      ],
+      "backtest": null
+    },
+    {
+      "slug": "nexttradefusion-v3",
+      "name": "NexttradeFusion V3",
+      "version": "v3.15",
+      "source_file": "NexttradeFusion_V3_v3.15.mq5",
+      "style": "Multi-factor Signal",
+      "tagline": "เครื่องยนต์สัญญาณหลายปัจจัย พร้อมกันสแปมและเบรกเกอร์ขาดทุนรายวัน",
+      "overview": "รวมหลายปัจจัย (โครงสร้าง, Liquidity, จุดเข้า, เทรนด์ HTF/ADX, Bollinger) เป็นคะแนนสัญญาณ มีระบบกันเปิดออเดอร์ซ้ำ (แท่งใหม่เท่านั้น, คูลดาวน์, จำกัดจำนวนและระยะห่าง) เวอร์ชัน 3.15 ขยาย SL ให้กว้างขึ้นสำหรับทอง และย้าย SL ไปคุ้มทุนเมื่อราคาสวนทาง",
+      "how_it_works": [
+        "คัดสภาพตลาดด้วย ADX (14, เกณฑ์ 22) และ Bollinger (20)",
+        "ให้น้ำหนักหลายปัจจัยรวมเป็นคะแนนสัญญาณ",
+        "Anti-Spam: NewBarOnly + Cooldown + MaxPos + MinDistance",
+        "TP หลายระดับ: TP1 ที่ 1R ปิด 50% แล้วถือส่วนที่เหลือตามโครงสร้าง",
+        "Rebalance: ถ้าราคาสวน ย้าย SL ไปจุดคุ้มทุน"
+      ],
+      "timeframes": ["ชาร์ตที่ติด EA"],
+      "symbols": ["ชาร์ตที่ติด EA", "ค่า SL เริ่มต้นตั้งสำหรับทอง (XAUUSD)"],
+      "risk_notes": [
+        "เสี่ยง 0.4% ต่อไม้, lot สูงสุด 1.5, รวมทุกออเดอร์ไม่เกิน 10 lot",
+        "SL = ATR × 2.4 (ขั้นต่ำ 280 จุด สูงสุด 1,200 จุด)",
+        "หยุดเมื่อขาดทุนรายวันถึง 3%"
+      ],
+      "backtest": null
+    },
+    {
+      "slug": "nexttrade-hybrid-fib",
+      "name": "NextTrade Hybrid Fib",
+      "version": "V2.2",
+      "source_file": "NextTrade_Hybrid_Fib_V2_2_Standalone.mq5",
+      "style": "Fibonacci + Liquidity",
+      "tagline": "หาไบแอส H1 วาด Fib M15 แล้วเข้าหลัง Sweep + CHOCH บน M5",
+      "overview": "ทำงานสามชั้นไทม์เฟรม: กำหนดไบแอสจาก H1, วาด Fibonacci อัตโนมัติจาก M15 แล้วรอการกวาดสภาพคล่อง (Sweep) และการเปลี่ยนโครงสร้าง (CHOCH) บน M5 ก่อนเข้าเทรด รองรับคำสั่ง Pending แบบอัตโนมัติ",
+      "how_it_works": [
+        "Auto Bias จาก H1 (ย้อนหลัง 100 แท่ง)",
+        "Auto Fib จาก M15 (ย้อนหลัง 120 แท่ง)",
+        "Auto Sweep และ Auto CHOCH บน M5 (Sweep มีอายุ 8 แท่ง)",
+        "Auto Entry พร้อมโหมด Pending อัตโนมัติ",
+        "Trailing Stop 300 จุด"
+      ],
+      "timeframes": ["H1", "M15", "M5"],
+      "symbols": ["ชาร์ตที่ติด EA"],
+      "risk_notes": [
+        "ค่าเริ่มต้นเป็น lot คงที่ 0.01",
+        "SL 500 จุด / TP 1,000 จุด",
+        "เปิดได้สูงสุด 10 ออเดอร์"
+      ],
+      "backtest": null
+    },
+    {
+      "slug": "scalping-sniper",
+      "name": "ScalpingSniperEA",
+      "version": "v2",
+      "source_file": "ScalpingSniperEA_v2.mq5",
+      "style": "Scalping / SMC",
+      "tagline": "สแกลป์แบบคัดคุณภาพ: โครงสร้าง → Liquidity → FVG/OB → คะแนน",
+      "overview": "ลำดับการตัดสินใจ: โครงสร้างตลาด → การกวาดสภาพคล่อง → Displacement → FVG/Order Block → คะแนนสัญญาณ → ตัวกรอง Regime → เกตคุณภาพ → เกตความเสี่ยง → ส่งคำสั่ง แล้วบริหารด้วย R-Multiple (คุ้มทุน + ตามกำไร) เวอร์ชัน 2 ลดความถี่และเข้มเรื่องคุณภาพสัญญาณ",
+      "how_it_works": [
+        "ไบแอสและโครงสร้างจาก M15, จุดเข้าและโซนจาก M5",
+        "ต้องมี FVG หรือ OB ที่ใช้ได้",
+        "คะแนนขั้นต่ำ 75 และเทรดเฉพาะระดับ Strong (≥ 85) เป็นค่าเริ่มต้น",
+        "ตัวกรอง Regime ด้วย ADX ≥ 22 และ ATR percentile",
+        "บริหารไม้ด้วยคุ้มทุนและ Trailing ตาม R"
+      ],
+      "timeframes": ["M15 (ไบแอส)", "M5 (เข้า)"],
+      "symbols": ["ชาร์ตที่ติด EA", "ค่าเริ่มต้นปรับสำหรับทอง (XAUUSD)"],
+      "risk_notes": [
+        "เสี่ยง 0.5% ต่อไม้",
+        "จำกัดสเปรด 30 จุด และ ATR ขั้นต่ำ 25 จุด",
+        "สแกลป์ไวต่อสเปรดและสลิปเพจของโบรกเกอร์"
+      ],
+      "backtest": null
+    },
+    {
+      "slug": "volumeprofile-orderflow",
+      "name": "VolumeProfile_OrderFlow_EA",
+      "version": "v2.00",
+      "source_file": null,
+      "style": "Volume Profile / Order Flow",
+      "tagline": "EA กลุ่ม Volume Profile และ Order Flow",
+      "overview": "ยังไม่มีรายละเอียดการทำงานจากซอร์สในระบบ จะอัปเดตเมื่อได้ไฟล์ EA หรือเอกสารจากทีมพัฒนา",
+      "how_it_works": [],
+      "timeframes": [],
+      "symbols": [],
+      "risk_notes": ["รอข้อมูลจากทีมพัฒนา"],
+      "backtest": null
+    },
+    {
+      "slug": "quantum-resonance",
+      "name": "QuantumResonanceEA",
+      "version": "",
+      "source_file": null,
+      "style": "—",
+      "tagline": "รอรายละเอียดจากทีมพัฒนา",
+      "overview": "ยังไม่มีรายละเอียดการทำงานจากซอร์สในระบบ จะอัปเดตเมื่อได้ไฟล์ EA หรือเอกสารจากทีมพัฒนา",
+      "how_it_works": [],
+      "timeframes": [],
+      "symbols": [],
+      "risk_notes": ["รอข้อมูลจากทีมพัฒนา"],
+      "backtest": null
+    },
+    {
+      "slug": "aerobreak-dashboard",
+      "name": "AeroBreak Dashboard",
+      "version": "v4.27",
+      "source_file": "AeroBreak_Dashboard_v4_27.mq5",
+      "style": "Breakout Zone + Recovery",
+      "tagline": "เทรดทะลุโซนฐาน พร้อมระบบ Recovery และ Risk Engine",
+      "overview": "สร้างโซนฐานราคาแล้วเข้าเมื่อราคาทะลุโซน หากราคาวิ่งสวนจะเปิดไม้ Recovery ตามระยะที่กำหนด มีโซนย่อย (Local Zone), การขยายโซนแบบ Ratchet, ปิดทั้งตะกร้าตาม TP และ Risk Engine ควบคุม lot รวม พร้อมแดชบอร์ดบนชาร์ต",
+      "how_it_works": [
+        "กำหนดโซนฐานจาก 20 แท่ง (กว้าง 600–3,000 จุด สเกลทอง M15)",
+        "ยืนยัน Breakout เมื่อทะลุขอบโซน 50 จุด",
+        "ราคาสวน 650 จุดจากขอบโซน/ไม้ล่าสุด → เปิดไม้ Recovery",
+        "TP ต่อไม้ 900 จุด หรือปิดทั้งตะกร้าตาม % หรือจำนวนเงิน",
+        "Risk Engine จำกัด lot รวม 10 lot และโหมดฉุกเฉิน"
+      ],
+      "timeframes": ["ชาร์ตที่ติด EA (ตั้งค่าเริ่มต้นสเกล M15)"],
+      "symbols": ["ชาร์ตที่ติด EA", "ค่าเริ่มต้นปรับสำหรับทอง (XAUUSD)"],
+      "risk_notes": [
+        "ระบบ Recovery เพิ่มไม้เมื่อราคาสวน ความเสี่ยงรวมสูงกว่า EA ไม้เดียว",
+        "lot เริ่มต้น 0.02, lot รวมไม่เกิน 10",
+        "ควรทดสอบบนบัญชีเดโมก่อนใช้จริง"
+      ],
+      "backtest": null
+    }
+  ]
+}

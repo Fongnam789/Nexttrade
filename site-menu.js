@@ -16,6 +16,7 @@
     news: "news",
     pay: "pay",
     aff: "go",
+    market: "app",
   };
 
   /* Visible labels only — do NOT show subdomain prefixes on menu */
@@ -29,6 +30,7 @@
     aff: "Affiliate",
     tree: "ผังสมาชิก",
     keys: "API Keys",
+    market: "ตลาด EA",
   };
 
   function hosts() {
