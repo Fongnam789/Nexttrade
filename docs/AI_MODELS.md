@@ -26,3 +26,16 @@ Rows 100…2000 users. Assumes every user hits the cap; excludes tax, gateway fe
   Telegram (`ADMIN_ALERT_TELEGRAM_BOT_TOKEN` + `ADMIN_ALERT_TELEGRAM_CHAT_ID`) and/or LINE (`ADMIN_ALERT_LINE_TOKEN` + `ADMIN_ALERT_LINE_TO`) if set; otherwise skipped silently and the admin shows "ยังไม่ได้ตั้งช่องทางแจ้งเตือน".
 - "เติม token" starts a new period (counter 0, thresholds re-armed; optional new amount).
 - **Requires a durable store (Upstash Redis) and `AI_GATEWAY_API_KEY` + `CHAT_ALLOW_SERVER_KEYS=1`**; with the memory store counters/alerts are lost on cold start, and with no key there is no usage to count.
+
+## Customer caps vs company pool (separate)
+- **Customer caps** (per model soft/hard, per user per month) are the customer's quota. Admin never refills customers.
+- **Company pool** (budgets above) is what the company bought; alerts 20/10/5 % are about the pool only.
+- Pool accounting: calls inside the customer's base caps are recorded with real gateway token usage; a customer top-up deducts its
+  *estimated* cost (admin assumptions × active model price) from the pool at allocation, and calls served from that top-up are not recorded again.
+
+## Customer top-up (`api/_lib/ai-topup.js`, `GET/POST /api/ai/topup`)
+- Admin sets price per unit (integer USDT; empty = "ราคา: รอประกาศ" → buying disabled), requests per unit, max units, large-top-up threshold (default = hard cap).
+- Customer buys in profile → bill (NX-XXXXXX, integer USDT, 30-min expiry, QR — same pattern as the package). A large top-up shows
+  "เครดิตไม่ทบไปเดือนถัดไป แนะนำเติมเท่าที่ใช้" and needs an explicit acknowledgement (also enforced server-side).
+- Admin "ยืนยันชำระ" → automatic, exactly-once allocation: + requests to the customer for the current month (Asia/Bangkok), − estimate from the pool.
+- Top-up is usable only after the base hard cap and expires at month end (no rollover). Next month the base soft/hard caps apply again.

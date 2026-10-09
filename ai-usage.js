@@ -66,8 +66,113 @@
     if (u.caps_are_defaults) box.appendChild(el("p", "muted ai-small", "ตัวเลข Cap เป็นค่าเริ่มต้นชั่วคราว รอแอดมินกำหนด — ไม่ใช่ราคา/แพ็กเกจจริง"));
     if (u.durable === false) box.appendChild(el("p", "muted ai-small", "ตัวนับยังไม่มีฐานข้อมูลถาวร (รีเซ็ตได้เมื่อเซิร์ฟเวอร์รีสตาร์ท)"));
     if (u.state === "soft") box.appendChild(el("div", "warn", "ใช้ถึง Soft Cap แล้ว — ยังใช้ได้ แต่เมื่อถึง Hard Cap จะถูกระงับ"));
-    if (u.state === "hard") box.appendChild(el("p", "bad ai-block", "ใช้ครบ Hard Cap — ระงับการใช้จนกว่าจะรีเซ็ตรอบใหม่หรือเติมโควตา"));
+    if (u.topup_granted > 0) box.appendChild(el("p", "ai-small", "Top-up เดือนนี้: เหลือ " + u.topup_left + " / " + u.topup_granted + " คำขอ" + (u.on_topup ? " · กำลังใช้ Top-up" : "") + " · หมดอายุสิ้นเดือน ไม่ทบไปเดือนถัดไป"));
+    if (u.state === "hard") box.appendChild(el("p", "bad ai-block", "ใช้ครบ Hard Cap — ระงับการใช้จนกว่าจะรีเซ็ตรอบใหม่ หรือซื้อ Top-up ด้านล่าง"));
     if (u.server_key_configured === false) box.appendChild(el("p", "muted ai-small", "หมายเหตุ: แอดมินยังไม่เปิดคีย์กลาง แชตโหมดนี้จะยังตอบไม่ได้"));
+    return box;
+  }
+
+
+  /* ---------- Top-up (customer buys; bill + QR; admin confirms payment → allocated automatically) ---------- */
+  var LARGE_WARN = "เครดิตไม่ทบไปเดือนถัดไป แนะนำเติมเท่าที่ใช้";
+  function topupApi(method, body) {
+    var a = global.NexxGoogleAuth;
+    var tok = a && a.getCredential ? a.getCredential() : "";
+    if (!tok) return Promise.resolve({ error: "login_again" });
+    return fetch("/api/ai/topup", { method: method, headers: { Authorization: "Bearer " + tok, "Content-Type": "application/json" }, cache: "no-store", body: body ? JSON.stringify(body) : undefined })
+      .then(function (r) { return r.json().catch(function () { return { error: "HTTP " + r.status }; }); })
+      .catch(function (e) { return { error: e.message }; });
+  }
+  function qrClone() {
+    var src = document.querySelector('#pay svg[aria-label="QR บิล"]');
+    return src ? src.cloneNode(true) : el("div", "muted", "QR");
+  }
+  var TST = { awaiting_payment: "รอชำระ / รอแอดมินยืนยัน", allocated: "ชำระแล้ว · เพิ่มโควตาแล้ว", cancelled: "ยกเลิก" };
+  function billView(o, redraw) {
+    var row = el("div", "ea-bill");
+    row.appendChild(qrClone());
+    var info = el("div");
+    info.appendChild(el("div", "muted", "เลขบิล"));
+    info.appendChild(el("div", "ea-bill-no", o.bill.no));
+    info.appendChild(el("div", "muted", "QR นี้ = ที่อยู่ของบิลนี้เท่านั้น · โอน " + o.amount + " USDT (BEP20) · " + o.requests + " คำขอ"));
+    var exp = Date.now() > o.bill.expires_at;
+    info.appendChild(el("div", "muted", exp ? "บิลหมดอายุแล้ว — ออกบิลใหม่" : "หมดอายุ " + new Date(o.bill.expires_at).toLocaleTimeString("th-TH")));
+    if (exp) {
+      var nb = el("button", "ghost", "ออกเลขบิลใหม่");
+      nb.type = "button";
+      nb.addEventListener("click", function () { topupApi("POST", { action: "rebill", id: o.id }).then(redraw); });
+      info.appendChild(nb);
+    }
+    row.appendChild(info);
+    return row;
+  }
+  function topupBox() {
+    var box = el("div", "ai-topup");
+    box.appendChild(el("h3", null, "ซื้อ Top-up"));
+    var inner = el("div");
+    inner.appendChild(el("p", "muted", "กำลังโหลด…"));
+    box.appendChild(inner);
+    function draw() {
+      topupApi("GET").then(function (t) {
+        inner.innerHTML = "";
+        if (!t || t.error) { inner.appendChild(el("p", "bad", "โหลด Top-up ไม่สำเร็จ (" + (t && t.error) + ")")); return; }
+        var c = t.config;
+        inner.appendChild(el("p", "muted ai-small", "เพิ่มคำขอเกิน Hard Cap ได้เฉพาะเดือนนี้ · ไม่ทบไปเดือนถัดไป · ต่ออายุแพ็กเกจเดือนหน้าได้ Cap พื้นฐานเท่าเดิม"));
+        if (!c.price_announced) {
+          inner.appendChild(el("p", null, "ราคา: รอประกาศ"));
+          inner.appendChild(el("p", "muted ai-small", "ยังซื้อไม่ได้จนกว่าจะประกาศราคา"));
+        } else {
+          var line = el("div", "ai-topup-row");
+          var sel = el("select");
+          for (var i = 1; i <= c.max_units; i++) {
+            var op = el("option", null, i + " หน่วย · " + (i * c.unit_requests) + " คำขอ · " + (i * c.unit_price_usdt) + " USDT");
+            op.value = String(i);
+            sel.appendChild(op);
+          }
+          line.appendChild(sel);
+          var buy = el("button", "btn", "ซื้อ Top-up");
+          buy.type = "button";
+          line.appendChild(buy);
+          inner.appendChild(line);
+          var warn = el("div", "warn");
+          warn.hidden = true;
+          var ack = el("label", "ai-small");
+          var cb = el("input"); cb.type = "checkbox";
+          ack.appendChild(cb);
+          ack.appendChild(document.createTextNode(" เข้าใจแล้ว — ซื้อจำนวนนี้"));
+          warn.appendChild(el("div", null, LARGE_WARN));
+          warn.appendChild(ack);
+          inner.appendChild(warn);
+          var msgP = el("p", "muted ai-small");
+          inner.appendChild(msgP);
+          var upd = function () {
+            var large = parseInt(sel.value, 10) * c.unit_requests >= c.large_requests;
+            warn.hidden = !large;
+            buy.disabled = large && !cb.checked;
+          };
+          sel.addEventListener("change", function () { cb.checked = false; upd(); });
+          cb.addEventListener("change", upd);
+          upd();
+          buy.addEventListener("click", function () {
+            buy.disabled = true;
+            topupApi("POST", { units: parseInt(sel.value, 10), ack_large: cb.checked }).then(function (r) {
+              if (r && r.order) return draw();
+              msgP.className = "bad ai-small";
+              msgP.textContent = r && r.error === "large_topup_ack_required" ? LARGE_WARN : "สร้างบิลไม่สำเร็จ (" + (r && r.error) + ")";
+              upd();
+            });
+          });
+        }
+        (t.orders || []).forEach(function (o) {
+          var it = el("div", "ai-topup-order");
+          it.appendChild(el("div", o.status === "allocated" ? "ok" : "", o.requests + " คำขอ · " + o.amount + " USDT · " + (TST[o.status] || o.status)));
+          if (o.status === "awaiting_payment" && o.bill) it.appendChild(billView(o, draw));
+          inner.appendChild(it);
+        });
+        if (t.durable === false) inner.appendChild(el("p", "muted ai-small", "ยังไม่มีฐานข้อมูลถาวร — คำสั่งซื้ออาจหายเมื่อเซิร์ฟเวอร์รีสตาร์ท"));
+      });
+    }
+    draw();
     return box;
   }
 
@@ -128,6 +233,7 @@
       if (u && !u.error) {
         last = u;
         holder.appendChild(meter(u));
+        holder.appendChild(topupBox());
       } else if (u && u.error === "login_again" || u && u.error === "google_login_required") {
         holder.appendChild(el("div", "warn", "ต้องเข้าสู่ระบบ Google อีกครั้งในแท็บนี้เพื่อดูโควตา"));
       } else {

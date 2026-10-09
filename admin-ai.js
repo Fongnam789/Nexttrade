@@ -216,6 +216,7 @@
       S.ai.models.forEach(function (m) { delete m._draft; });
       render();
       if (window.NtAdminBudget) window.NtAdminBudget.render(ai);
+      if (window.NtAdminTopup) window.NtAdminTopup.render(ai);
     },
   };
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
@@ -330,6 +331,75 @@
     $("aiAck").addEventListener("click", function () { act({ action: "ai_alerts_ack" }).then(function (j) { if (j) msg("รับทราบแล้ว", true); }); });
   }
   window.NtAdminBudget = { render: function (ai) { if (!ai || !ai.budget) return; B.ai = ai; render(); } };
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
+  else init();
+})();
+
+/* ---------- customer top-up orders (customer buys; admin confirms payment → automatic allocation) ---------- */
+(function () {
+  "use strict";
+  var H = { "Content-Type": "application/json", "X-NT-Admin": "1" };
+  var filled = false;
+  function $(id) { return document.getElementById(id); }
+  function el(t, c, x) { var n = document.createElement(t); if (c) n.className = c; if (x != null) n.textContent = x; return n; }
+  function msg(t, ok) { var m = $("tMsg"); m.className = ok ? "ok" : "bad"; m.textContent = t; }
+  function bkk(ms) { return new Date(ms).toLocaleString("en-GB", { timeZone: "Asia/Bangkok", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }) + " (เวลาไทย)"; }
+  var ST = { awaiting_payment: "รอชำระ", allocated: "ชำระแล้ว · จัดสรรแล้ว", cancelled: "ยกเลิก" };
+  function act(body) {
+    return fetch("/api/admin/action", { method: "POST", headers: H, credentials: "same-origin", body: JSON.stringify(body) })
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { j._status = r.status; return j; }); })
+      .then(function (j) {
+        if (j._status === 401) { location.reload(); return null; }
+        if (j._status !== 200) { msg("ไม่สำเร็จ (" + (j.error || j._status) + ")", false); return null; }
+        if (window.NtAdminAI) window.NtAdminAI.render(j.ai, j.caps);
+        return j;
+      });
+  }
+  function render(tp) {
+    var c = tp.config;
+    if (!filled) {
+      $("tPrice").value = c.unit_price_usdt == null ? "" : c.unit_price_usdt;
+      $("tUnitReq").value = c.unit_requests;
+      $("tMax").value = c.max_units;
+      $("tLarge").value = c.large_requests == null ? "" : c.large_requests;
+      filled = true;
+    }
+    $("tInfo").textContent = c.price_announced ? "ลูกค้าเห็น: " + c.unit_price_usdt + " USDT / " + c.unit_requests + " คำขอ" : "ลูกค้าเห็น: ราคา: รอประกาศ (ยังซื้อไม่ได้)";
+    var t = $("aiTopups");
+    t.innerHTML = "";
+    var hr = el("tr");
+    ["สร้างเมื่อ", "ลูกค้า", "จำนวน", "ยอด", "เลขบิล", "สถานะ", "จัดสรร", ""].forEach(function (h) { hr.appendChild(el("th", null, h)); });
+    t.appendChild(hr);
+    if (!tp.orders.length) { var e = el("tr"); var td = el("td", "muted", "ยังไม่มีคำสั่งซื้อ Top-up"); td.colSpan = 8; e.appendChild(td); t.appendChild(e); }
+    tp.orders.forEach(function (o) {
+      var tr = el("tr");
+      tr.appendChild(el("td", null, bkk(o.created_at)));
+      tr.appendChild(el("td", null, o.email || "—"));
+      tr.appendChild(el("td", null, o.units + " หน่วย · " + o.requests + " คำขอ"));
+      tr.appendChild(el("td", null, o.amount + " USDT"));
+      tr.appendChild(el("td", null, o.bill ? o.bill.no : "—"));
+      tr.appendChild(el("td", o.status === "allocated" ? "ok" : "", ST[o.status] || o.status));
+      var al = o.alloc;
+      tr.appendChild(el("td", "muted", o.status === "allocated" ? ("+" + o.requests + " คำขอ (เดือน " + o.allocated_month + ")" + (al && al.model ? " · หักงบ ~$" + al.usd.toFixed(4) + " / " + al.tokens.toLocaleString("en-US") + " tokens · " + al.model + (al.budgets.length ? "" : " (ยังไม่มีงบที่ตรง)") : " · ไม่มีโมเดลที่ใช้งาน ไม่ได้หักงบ")) : "—"));
+      var tdA = el("td");
+      if (o.status === "awaiting_payment") {
+        var ok = el("button", "gold", "ยืนยันชำระ"); ok.type = "button";
+        ok.onclick = function () { if (confirm("ยืนยันว่าได้รับ " + o.amount + " USDT สำหรับบิล " + (o.bill && o.bill.no) + "? ระบบจะจัดสรร " + o.requests + " คำขอให้ลูกค้าทันที")) act({ action: "ai_topup_confirm", id: o.id }).then(function (j) { if (j) msg("ยืนยันแล้ว — จัดสรรอัตโนมัติเรียบร้อย", true); }); };
+        var no = el("button", "red", "ยกเลิก"); no.type = "button";
+        no.onclick = function () { if (confirm("ยกเลิกคำสั่งซื้อนี้?")) act({ action: "ai_topup_cancel", id: o.id }).then(function (j) { if (j) msg("ยกเลิกแล้ว", true); }); };
+        tdA.appendChild(ok); tdA.appendChild(no);
+      }
+      tr.appendChild(tdA);
+      t.appendChild(tr);
+    });
+  }
+  function init() {
+    $("tSave").addEventListener("click", function () {
+      act({ action: "ai_topup_config", unit_price_usdt: $("tPrice").value.trim() || null, unit_requests: $("tUnitReq").value, max_units: $("tMax").value, large_requests: $("tLarge").value.trim() || null })
+        .then(function (j) { if (j) { filled = false; if (j.ai && j.ai.topup) render(j.ai.topup); msg("บันทึกแล้ว", true); } });
+    });
+  }
+  window.NtAdminTopup = { render: function (ai) { if (ai && ai.topup) render(ai.topup); } };
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
   else init();
 })();

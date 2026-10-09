@@ -146,6 +146,19 @@
         <div class="scroll"><table id="aiAlerts"></table></div>
         <p id="bMsg" class="muted"></p>
       </div>
+      <div class="card" id="aiTopupCard">
+        <h2>Top-up ของลูกค้า (ลูกค้าซื้อเองในโปรไฟล์)</h2>
+        <p class="muted">แอดมินไม่เติมโควตาให้ลูกค้าเอง · ลูกค้าซื้อ Top-up → บิล/QR → แอดมินกด "ยืนยันชำระ" → ระบบจัดสรรอัตโนมัติ: +คำขอให้ลูกค้าเดือนนี้ และหักค่าประมาณจากงบ token ของบริษัท (โมเดลที่ใช้งาน) · Top-up ไม่ทบไปเดือนถัดไป · แยกจาก Cap ปกติ</p>
+        <div class="ai-ctrl">
+          <label>ราคา / หน่วย (USDT, จำนวนเต็ม) <input id="tPrice" type="number" min="1" step="1" placeholder="ว่าง = รอประกาศ" /></label>
+          <label>คำขอ / หน่วย <input id="tUnitReq" type="number" min="1" step="1" /></label>
+          <label>ซื้อได้สูงสุด (หน่วย/ครั้ง) <input id="tMax" type="number" min="1" step="1" /></label>
+          <label>เตือน "เติมมาก" เมื่อ ≥ คำขอ <input id="tLarge" type="number" min="1" step="1" placeholder="ว่าง = Hard cap" /></label>
+          <div><button class="gold" type="button" id="tSave">บันทึกราคา Top-up</button><div class="muted ai-small" id="tInfo"></div></div>
+        </div>
+        <div class="scroll"><table id="aiTopups"></table></div>
+        <p id="tMsg" class="muted"></p>
+      </div>
       <div class="card">
         <h2>Social Trade — Master</h2>
         <p class="muted">ผู้สมัคร Master จากระบบ NEXTTRADE เท่านั้น · อนุมัติแล้วจึงแสดงในหน้า Social Trade · ลิงก์ Brokeree/Myfxbook เป็นของ Master เอง (ตรวจก่อนอนุมัติ)</p>

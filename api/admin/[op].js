@@ -23,6 +23,7 @@ const catalog = require("../../ea_catalog.json");
 const M = require("../_lib/social");
 const AM = require("../_lib/ai-models");
 const AB = require("../_lib/ai-budget");
+const AT = require("../_lib/ai-topup");
 
 function send(res, status, obj) {
   res.setHeader("Cache-Control", "no-store");
@@ -40,6 +41,7 @@ async function aiState() {
     gateway_key_set: !!String(process.env.AI_GATEWAY_API_KEY || "").trim(),
     server_mode_enabled: String(process.env.CHAT_ALLOW_SERVER_KEYS || "") === "1",
     budget: await AB.state(),
+    topup: { config: await AT.config(), orders: (await AT.list()).slice(0, 100).map(AT.adminOrder) },
   };
 }
 function csrfOk(req) {
@@ -127,6 +129,12 @@ module.exports = async function handler(req, res) {
           else if (a === "ai_set_model") await AM.setModel(String(body.id || ""), body);
           else if (a === "ai_reset_model") await AM.resetModel(String(body.id || ""));
           else if (a === "ai_set_assumptions") await AM.setAssumptions(body);
+          else if (a === "ai_topup_config" || a === "ai_topup_confirm" || a === "ai_topup_cancel") {
+            const r = a === "ai_topup_config" ? await AT.setConfig(body)
+              : a === "ai_topup_confirm" ? await AT.confirm(String(body.id || ""), "admin")
+              : await AT.cancel(String(body.id || ""));
+            if (r.error) return send(res, 400, { error: r.error });
+          }
           else if (a === "ai_budget_set" || a === "ai_budget_topup" || a === "ai_budget_delete" || a === "ai_alerts_ack") {
             const r = a === "ai_budget_set" ? await AB.set(body)
               : a === "ai_budget_topup" ? await AB.topup(String(body.key || ""), body.amount)

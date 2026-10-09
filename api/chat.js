@@ -212,6 +212,7 @@ module.exports = async function handler(req, res) {
   let effectiveKey = key;
   let usage = null;
   let gatewayModel = "";
+  let fromTopup = false;
   const wantsOurs = !key && (String(body.mode || "") === "ours" || allowServer);
   if (wantsOurs) {
     // "ใช้ระบบของเรา": our server key, only for a verified Google account, metered by soft/hard caps (api/_lib/ai-caps.js).
@@ -250,8 +251,9 @@ module.exports = async function handler(req, res) {
       return sendJson(503, { ok: false, error: "usage_store_error", gated: true, reply: "ตรวจโควตาไม่ได้ชั่วคราว ลองใหม่ภายหลัง" });
     }
     usage = r.usage;
+    fromTopup = !!r.from_topup;
     if (!r.allowed) {
-      return sendJson(429, { ok: false, error: "hard_cap", gated: true, usage, reply: "ใช้ครบ Hard Cap แล้ว — ระงับการใช้จนกว่าจะรีเซ็ตรอบใหม่หรือเติมโควตา" });
+      return sendJson(429, { ok: false, error: "hard_cap", gated: true, usage, reply: "ใช้ครบ Hard Cap แล้ว — ระงับการใช้จนกว่าจะรีเซ็ตรอบใหม่ หรือซื้อ Top-up ในโปรไฟล์" });
     }
   }
 
@@ -294,8 +296,9 @@ module.exports = async function handler(req, res) {
     if (provider === "gateway") {
       const g = await callGateway(effectiveKey, gatewayModel, messages);
       reply = g.reply;
-      // Purchased-budget tracking + low-balance alerts (real token usage from the gateway response; never throws).
-      await AB.record(gatewayModel, g.usage);
+      // Company token pool: base-cap calls are recorded with real token usage (alerts 20/10/5 %); calls served from a
+      // customer's purchased top-up are not recorded again — their estimated cost was deducted at allocation.
+      if (!fromTopup) await AB.record(gatewayModel, g.usage);
     }
     else if (provider === "openai") reply = await callOpenAI(effectiveKey, messages);
     else if (provider === "anthropic") reply = await callAnthropic(effectiveKey, messages);

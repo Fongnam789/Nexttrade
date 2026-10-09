@@ -154,51 +154,74 @@ async function ackAll() {
   return { ok: true };
 }
 
+/** Add consumption (usd + tokens) to every budget matching model m; fire threshold alerts. `why` labels the alert. */
+async function addUsage(m, usd, tokens, why) {
+  const l = await list();
+  const hits = [];
+  for (const b of l) {
+    if (!((b.scope === "model" && b.target === m.id) || (b.scope === "provider" && b.target === m.provider))) continue;
+    const by = b.unit === "usd" ? Math.round(usd * MICRO) : Math.round(tokens);
+    if (by <= 0) continue;
+    const raw = await store().incr(usedKey(b), by);
+    hits.push(b.key);
+    const used = b.unit === "usd" ? raw / MICRO : raw;
+    const remPct = b.amount > 0 ? (Math.max(0, b.amount - used) / b.amount) * 100 : 0;
+    // only the lowest newly crossed threshold produces a message, but all crossed ones are marked fired
+    const crossed = THRESHOLDS.filter((t) => remPct <= t);
+    let newest = null;
+    for (const t of crossed) {
+      const added = Number(await store().sadd(firedKey(b), String(t))) === 1;
+      if (added && (newest == null || t < newest)) newest = t;
+    }
+    if (newest == null) continue;
+    const label = b.scope === "model" ? (m.label + " (" + m.id + ")") : ("ผู้ให้บริการ " + b.target);
+    const text = "⚠️ NEXTTRADE: token/เครดิต AI ใกล้หมด — " + label + " เหลือ " + remPct.toFixed(1) + "% (" + fmt(b, Math.max(0, b.amount - used)) + " จาก " + fmt(b, b.amount) + ") · แตะเกณฑ์ " + newest + "%" + (why ? " · " + why : "") + " · เติมแล้วกด 'เติม token' ใน /admin";
+    const sent = await notify(text);
+    const a = { at: Date.now(), budget: b.key, threshold: newest, remaining_pct: Math.round(remPct * 10) / 10, text, sent, ack: false };
+    const al = await alerts();
+    al.unshift(a);
+    await store().setJson(K_ALERTS, al.slice(0, 50));
+  }
+  return hits;
+}
+
 /**
- * Record one /api/chat (ours mode) call. usage = OpenAI-style {prompt_tokens, completion_tokens}.
- * Never throws (alerting must not break chat).
+ * Record one /api/chat (ours mode) call served from the customer's BASE monthly caps.
+ * usage = OpenAI-style {prompt_tokens, completion_tokens} from the gateway response. Never throws.
+ * (Calls served from a purchased top-up are not recorded again: their cost was deducted at allocation.)
  */
 async function record(modelId, usage) {
   try {
     const pin = Math.max(0, Number(usage && usage.prompt_tokens) || 0);
     const pout = Math.max(0, Number(usage && usage.completion_tokens) || 0);
     if (!pin && !pout) return;
-    const ms = await AM.models();
-    const m = ms.find((x) => x.id === modelId);
+    const m = (await AM.models()).find((x) => x.id === modelId);
     if (!m) return;
     const price = AM.priceAt(m, AM.todayBkk()) || { input: 0, output: 0 };
-    const usd = (pin * price.input + pout * price.output) / 1e6;
-    const l = await list();
-    for (const b of l) {
-      if (!((b.scope === "model" && b.target === m.id) || (b.scope === "provider" && b.target === m.provider))) continue;
-      const by = b.unit === "usd" ? Math.round(usd * MICRO) : pin + pout;
-      if (by <= 0) continue;
-      const raw = await store().incr(usedKey(b), by);
-      const used = b.unit === "usd" ? raw / MICRO : raw;
-      const remPct = b.amount > 0 ? (Math.max(0, b.amount - used) / b.amount) * 100 : 0;
-      // only the lowest newly crossed threshold produces a message, but all crossed ones are marked fired
-      const crossed = THRESHOLDS.filter((t) => remPct <= t);
-      let newest = null;
-      for (const t of crossed) {
-        const added = Number(await store().sadd(firedKey(b), String(t))) === 1;
-        if (added && (newest == null || t < newest)) newest = t;
-      }
-      if (newest == null) continue;
-      const label = b.scope === "model" ? (m.label + " (" + m.id + ")") : ("ผู้ให้บริการ " + b.target);
-      const text = "⚠️ NEXTTRADE: token/เครดิต AI ใกล้หมด — " + label + " เหลือ " + remPct.toFixed(1) + "% (" + fmt(b, Math.max(0, b.amount - used)) + " จาก " + fmt(b, b.amount) + ") · แตะเกณฑ์ " + newest + "% · เติมแล้วกด 'เติม token' ใน /admin";
-      const sent = await notify(text);
-      const a = { at: Date.now(), budget: b.key, threshold: newest, remaining_pct: Math.round(remPct * 10) / 10, text, sent, ack: false };
-      const al = await alerts();
-      al.unshift(a);
-      await store().setJson(K_ALERTS, al.slice(0, 50));
-    }
+    await addUsage(m, (pin * price.input + pout * price.output) / 1e6, pin + pout, "");
   } catch (e) {
     /* swallow */
   }
+}
+
+/**
+ * Customer top-up allocation: deduct the ESTIMATED cost of `requests` (admin assumptions: tokens/request,
+ * token factor, today's price of the active model) from the company pool budgets of that model/provider.
+ */
+async function allocate(modelId, requests, why) {
+  const m = (await AM.models()).find((x) => x.id === modelId);
+  if (!m) return { model: null, usd: 0, tokens: 0, budgets: [] };
+  const a = await AM.assumptions();
+  const f = a.apply_token_factor !== false && m.token_factor ? m.token_factor : 1;
+  const price = AM.priceAt(m, AM.todayBkk()) || { input: 0, output: 0 };
+  const tin = requests * a.input_tokens * f, tout = requests * a.output_tokens * f;
+  const usd = (tin * price.input + tout * price.output) / 1e6;
+  const budgets = await addUsage(m, usd, tin + tout, why || "จัดสรรให้ top-up ลูกค้า");
+  return { model: m.id, usd: Math.round(usd * 1e6) / 1e6, tokens: Math.round(tin + tout), budgets };
 }
 
 async function state() {
   return { budgets: await view(), alerts: await alerts(), channels: channels(), thresholds: THRESHOLDS, providers: providers() };
 }
 
-module.exports = { THRESHOLDS, list, set, topup, remove, view, alerts, ackAll, record, channels, notify, state };
+module.exports = { THRESHOLDS, list, set, topup, remove, view, alerts, ackAll, record, allocate, channels, notify, state };
