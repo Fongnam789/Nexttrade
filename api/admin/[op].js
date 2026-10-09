@@ -6,6 +6,8 @@
  *   GET  /api/admin/data                          → EA requests/licenses + AI caps
  *   POST /api/admin/action  {action, id?, soft?, hard?, period?}
  *        action: confirm_payment | approve | revoke | unrevoke | set_caps
+ *                | issue  {ea, account, server, test?}  → admin-issued license (signed server-side, st=pending_payment)
+ *                | delete {id}                          → remove a license record (e.g. test records)
  * Mutating calls need header X-NT-Admin: 1 (with SameSite=Strict cookie → CSRF protection). No CORS headers on purpose.
  */
 const A = require("../_lib/admin-auth");
@@ -13,6 +15,8 @@ const R = require("../_lib/ea-requests");
 const C = require("../_lib/ai-caps");
 const S = require("../_lib/store");
 const L = require("../_lib/license");
+const crypto = require("crypto");
+const catalog = require("../../ea_catalog.json");
 
 function send(res, status, obj) {
   res.setHeader("Cache-Control", "no-store");
@@ -75,6 +79,29 @@ module.exports = async function handler(req, res) {
       if (a === "set_caps") {
         try { return send(res, 200, { caps: await C.setCaps(body.soft, body.hard, body.period) }); }
         catch (e) { return send(res, 400, { error: "bad_caps" }); }
+      }
+      if (a === "issue") {
+        if (!L.secret()) return send(res, 503, { error: "license_secret_unset" });
+        const ea = String(body.ea || "").trim();
+        const account = String(body.account || "").trim();
+        const server = L.normServer(body.server);
+        if (!L.SLUG_RE.test(ea) || !(catalog.eas || []).some((x) => x.slug === ea)) return send(res, 400, { error: "unknown_ea" });
+        if (!L.ACCOUNT_RE.test(account)) return send(res, 400, { error: "bad_account" });
+        if (!L.SERVER_RE.test(server)) return send(res, 400, { error: "bad_server" });
+        const days = Math.min(Math.max(parseInt(process.env.LICENSE_PENDING_DAYS || "30", 10) || 30, 1), 365);
+        const iat = Math.floor(Date.now() / 1000);
+        const payload = { v: 1, ea: ea, acct: account, srv: server, st: "pending_payment", iat: iat, exp: iat + days * 86400, uid: "admin", jti: crypto.randomBytes(12).toString("base64url") };
+        const key = L.sign(payload);
+        const rec0 = await R.create({
+          id: payload.jti, ea: ea, account: account, server: server, owner_uid: "admin", email: "",
+          paid: false, approved: false, revoked: false, delivery: null, issued_by: "admin", test: !!body.test,
+          created_at: Date.now(), license_expires_at: new Date(payload.exp * 1000).toISOString(),
+        });
+        return send(res, 200, { request: R.publicView(rec0), key: key });
+      }
+      if (a === "delete") {
+        const ok = await R.remove(body.id);
+        return send(res, ok ? 200 : 404, ok ? { ok: true } : { error: "not_found" });
       }
       const rec = await R.get(body.id);
       if (!rec) return send(res, 404, { error: "not_found" });

@@ -17,5 +17,5 @@
 
 ## ต้องมี DB
 
-ตัวนับใช้ `api/_lib/store.js` — ถ้าไม่มี `KV_REST_API_URL` + `KV_REST_API_TOKEN` จะนับในหน่วยความจำต่อ instance
+ตัวนับใช้ `api/_lib/store.js` — ถ้าไม่มี `KV_REST_API_URL` + `KV_REST_API_TOKEN` (หรือ `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`) จะนับในหน่วยความจำต่อ instance
 (ไม่ใช่ลิมิตจริง) · ยังไม่มี: เติมโควตาต่อบัญชี, ส่งแจ้งเตือนทางอีเมล/LINE เมื่อถึง Soft cap

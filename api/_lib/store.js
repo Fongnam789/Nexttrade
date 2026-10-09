@@ -1,10 +1,11 @@
 /**
- * Pluggable server store (no database yet).
- *   - KV_REST_API_URL + KV_REST_API_TOKEN set (Vercel KV / Upstash Redis REST) → durable, shared by all instances.
+ * Pluggable server store.
+ *   - Upstash Redis (Vercel Marketplace) REST credentials set → durable, shared by all instances (kind "redis").
+ *     Accepts either env pair: KV_REST_API_URL + KV_REST_API_TOKEN  or  UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN.
  *   - Otherwise in-memory Map → per serverless instance, lost on cold start. NOT a real database:
  *     caps, lockouts, EA requests and license status are only best-effort until KV/DB is attached.
  * TODO(DB): attach Vercel KV/Upstash (Marketplace) or replace this module with Postgres; keep the interface.
- * Interface (all Promise): get, set(key, value, ttlSec?), del, incr(key, by, ttlSec?), getJson, setJson, sadd, smembers
+ * Interface (all Promise): get, set(key, value, ttlSec?), del, incr(key, by, ttlSec?), getJson, setJson, sadd, srem, smembers
  */
 const mem = new Map();
 
@@ -33,6 +34,13 @@ const memoryStore = {
     set.add(member);
     mem.set(k, { val: JSON.stringify([...set]), exp: 0 });
   },
+  async srem(k, member) {
+    const v = memAlive(k);
+    if (!v) return;
+    const set = new Set(JSON.parse(v.val));
+    set.delete(member);
+    mem.set(k, { val: JSON.stringify([...set]), exp: 0 });
+  },
   async smembers(k) { const v = memAlive(k); return v ? JSON.parse(v.val) : []; },
 };
 
@@ -47,7 +55,7 @@ function kvStore(url, token) {
     return (await r.json()).result;
   }
   return {
-    kind: "kv",
+    kind: "redis",
     durable: true,
     async get(k) { return cmd(["GET", k]); },
     async set(k, val, ttl) { return ttl ? cmd(["SET", k, String(val), "EX", String(ttl)]) : cmd(["SET", k, String(val)]); },
@@ -58,6 +66,7 @@ function kvStore(url, token) {
       return n;
     },
     async sadd(k, m) { return cmd(["SADD", k, m]); },
+    async srem(k, m) { return cmd(["SREM", k, m]); },
     async smembers(k) { return (await cmd(["SMEMBERS", k])) || []; },
   };
 }
@@ -65,8 +74,10 @@ function kvStore(url, token) {
 let cached = null;
 function store() {
   if (cached) return cached;
-  const url = process.env.KV_REST_API_URL;
-  const token = process.env.KV_REST_API_TOKEN;
+  // Credentials are only read here and sent as a Bearer header to Upstash; never logged or returned.
+  const env = process.env;
+  const url = env.KV_REST_API_URL || env.UPSTASH_REDIS_REST_URL;
+  const token = env.KV_REST_API_TOKEN || env.UPSTASH_REDIS_REST_TOKEN;
   const base = url && token ? kvStore(url, token) : memoryStore;
   cached = Object.assign({}, base, {
     async getJson(k) { const v = await base.get(k); if (v == null) return null; try { return JSON.parse(v); } catch (e) { return null; } },

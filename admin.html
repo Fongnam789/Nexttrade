@@ -119,7 +119,7 @@
       if (j._status === 401) return show(false);
       var w = $("storeWarn");
       w.innerHTML = "";
-      if (!j.durable) w.appendChild(el("div", "warn", "ยังไม่มีฐานข้อมูลถาวร (store: " + j.store + ") — ข้อมูลคำขอ/สถานะ/ตัวนับอยู่ในหน่วยความจำของเซิร์ฟเวอร์และอาจหายเมื่อรีสตาร์ท · ต่อ Vercel KV/Upstash (KV_REST_API_URL, KV_REST_API_TOKEN) เพื่อใช้งานจริง"));
+      if (!j.durable) w.appendChild(el("div", "warn", "ยังไม่มีฐานข้อมูลถาวร (store: " + j.store + ") — ข้อมูลคำขอ/สถานะ/ตัวนับอยู่ในหน่วยความจำของเซิร์ฟเวอร์และอาจหายเมื่อรีสตาร์ท · ต่อ Upstash Redis (KV_REST_API_URL/TOKEN หรือ UPSTASH_REDIS_REST_URL/TOKEN) เพื่อใช้งานจริง"));
       var t = $("reqTable");
       t.innerHTML = "";
       var hr = el("tr");
@@ -131,7 +131,7 @@
       (j.requests || []).forEach(function (r) {
         var tr = el("tr");
         tr.appendChild(el("td", null, r.created_at ? new Date(r.created_at).toLocaleString("th-TH") : "—"));
-        tr.appendChild(el("td", null, r.email || "—"));
+        tr.appendChild(el("td", null, r.email || (r.issued_by === "admin" ? "ออกโดยแอดมิน" : "—")));
         tr.appendChild(el("td", null, r.ea));
         tr.appendChild(el("td", null, r.account + " · " + r.server));
         tr.appendChild(el("td", null, DELIV[r.delivery] || "ยังไม่เลือก"));
@@ -140,7 +140,8 @@
         var b1 = el("button", null, "ยืนยันชำระ"); b1.type = "button"; b1.disabled = r.paid || r.revoked; b1.onclick = function () { act("confirm_payment", r.id, b1); };
         var b2 = el("button", "gold", "อนุมัติ"); b2.type = "button"; b2.disabled = !r.paid || r.approved || r.revoked; b2.onclick = function () { act("approve", r.id, b2); };
         var b3 = el("button", "red", r.revoked ? "คืนสิทธิ์" : "เพิกถอน"); b3.type = "button"; b3.onclick = function () { act(r.revoked ? "unrevoke" : "revoke", r.id, b3); };
-        tdA.appendChild(b1); tdA.appendChild(b2); tdA.appendChild(b3);
+        var b4 = el("button", "red", "ลบ"); b4.type = "button"; b4.onclick = function () { if (confirm("ลบเรคคอร์ดไลเซนส์นี้ถาวร? (คีย์ที่ออกไปแล้วจะตรวจไม่ผ่านสถานะ active อีก)")) act("delete", r.id, b4); else b4.disabled = false; };
+        tdA.appendChild(b1); tdA.appendChild(b2); tdA.appendChild(b3); tdA.appendChild(b4);
         tr.appendChild(tdA);
         t.appendChild(tr);
       });

@@ -42,12 +42,21 @@ async function list(indexKey) {
   out.sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
   return out;
 }
+async function remove(id) {
+  const rec = await get(id);
+  if (!rec) return false;
+  const st = S.store();
+  await st.del("eareq:" + rec.id);
+  await st.srem("eareq:index", rec.id);
+  if (rec.owner_uid) await st.srem("eareq:owner:" + rec.owner_uid, rec.id);
+  return true;
+}
 function publicView(rec) {
   return {
     id: rec.id, ea: rec.ea, account: rec.account, server: rec.server,
     status: effective(rec), paid: !!rec.paid, approved: !!rec.approved, revoked: !!rec.revoked,
-    delivery: rec.delivery || null, created_at: rec.created_at, license_expires_at: rec.license_expires_at,
+    delivery: rec.delivery || null, issued_by: rec.issued_by || "customer", created_at: rec.created_at, license_expires_at: rec.license_expires_at,
   };
 }
 
-module.exports = { effective, create, get, update, list, publicView };
+module.exports = { effective, create, get, update, remove, list, publicView };
